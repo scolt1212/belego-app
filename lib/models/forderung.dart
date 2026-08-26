@@ -14,6 +14,5 @@ class Forderung {
 
   bool get istUeberfaellig => faelligkeitsdatum.isBefore(DateTime.now());
 
-  int get tageDifferenz =>
-      faelligkeitsdatum.difference(DateTime.now()).inDays;
+  int get tageDifferenz => faelligkeitsdatum.difference(DateTime.now()).inDays;
 }

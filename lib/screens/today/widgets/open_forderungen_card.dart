@@ -15,7 +15,10 @@ class OpenForderungenCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(locale: 'de_CH', symbol: 'CHF');
+    final currencyFormat = NumberFormat.currency(
+      locale: 'de_CH',
+      symbol: 'CHF',
+    );
 
     return Card(
       child: Padding(
@@ -61,7 +64,11 @@ class OpenForderungenCard extends StatelessWidget {
             color: AppColors.sky50,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: const Icon(Icons.receipt_long_outlined, color: AppColors.sky600, size: 20),
+          child: const Icon(
+            Icons.receipt_long_outlined,
+            color: AppColors.sky600,
+            size: 20,
+          ),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -74,7 +81,10 @@ class OpenForderungenCard extends StatelessWidget {
               ),
               Text(
                 '${forderungen.length} unbezahlte ${forderungen.length == 1 ? 'Rechnung' : 'Rechnungen'}',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -114,7 +124,9 @@ class _ForderungRow extends StatelessWidget {
     final tage = forderung.tageDifferenz.abs();
     final faelligkeitsLabel = ueberfaellig
         ? 'Überfällig seit $tage ${tage == 1 ? 'Tag' : 'Tagen'}'
-        : (tage == 0 ? 'Heute fällig' : 'Fällig in $tage ${tage == 1 ? 'Tag' : 'Tagen'}');
+        : (tage == 0
+              ? 'Heute fällig'
+              : 'Fällig in $tage ${tage == 1 ? 'Tag' : 'Tagen'}');
 
     return Row(
       children: [
@@ -124,12 +136,18 @@ class _ForderungRow extends StatelessWidget {
             children: [
               Text(
                 forderung.kontaktName,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 forderung.belegNummer,
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),

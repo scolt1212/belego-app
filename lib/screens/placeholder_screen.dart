@@ -4,11 +4,7 @@ import '../theme/app_theme.dart';
 
 /// Einfacher Platzhalter für Screens, die noch nicht implementiert sind.
 class PlaceholderScreen extends StatelessWidget {
-  const PlaceholderScreen({
-    super.key,
-    required this.title,
-    required this.icon,
-  });
+  const PlaceholderScreen({super.key, required this.title, required this.icon});
 
   final String title;
   final IconData icon;
@@ -25,7 +21,10 @@ class PlaceholderScreen extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               '$title kommt bald',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 15,
+              ),
             ),
           ],
         ),

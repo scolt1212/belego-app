@@ -66,5 +66,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Belego benötigt Zugriff auf deine Fotos, damit du ein Firmenlogo auswählen kannst.</string>
 </dict>
 </plist>
