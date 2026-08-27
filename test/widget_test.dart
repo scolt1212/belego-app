@@ -2533,4 +2533,166 @@ void main() {
       );
     });
   });
+
+  // ---------------------------------------------------------------------
+  // Finanzkarten: immer nebeneinander, auch auf schmalen Smartphones
+  // ---------------------------------------------------------------------
+
+  group('Finanzkarten – responsives Nebeneinander ohne Overflow', () {
+    // Demo-Werte aus `TodayScreenState._buildDemoInvoices` (siehe dort):
+    // nur DEMO1 (CHF 1'240.00) ist diesen Monat bezahlt; DEMO2 (CHF 950.00)
+    // ist offen und überfällig, DEMO3 (CHF 380.50) offen und nicht
+    // überfällig -> Offene Rechnungen gesamt CHF 1'330.50, 2 Stück.
+    const expectedRevenue = 124000;
+    const expectedOpenTotal = 133050;
+    const expectedOverdueTotal = 95000;
+
+    Future<void> pumpAtWidth(WidgetTester tester, double width) async {
+      final originalSize = tester.view.physicalSize;
+      final originalRatio = tester.view.devicePixelRatio;
+      tester.view.physicalSize = Size(width, 2600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.physicalSize = originalSize;
+        tester.view.devicePixelRatio = originalRatio;
+      });
+      await tester.pumpWidget(wrapRootShell(isDemoMode: true));
+      await tester.pumpAndSettle();
+    }
+
+    void expectCardsSideBySideWithinScreen(WidgetTester tester, double width) {
+      final revenueRect = tester.getRect(
+        find.byKey(const Key('finance_card_revenue')),
+      );
+      final openRect = tester.getRect(
+        find.byKey(const Key('finance_card_open')),
+      );
+      final overdueRect = tester.getRect(
+        find.byKey(const Key('finance_card_overdue')),
+      );
+
+      // Nebeneinander statt untereinander: gleiche vertikale Position,
+      // aufsteigende horizontale Position.
+      expect(revenueRect.top, closeTo(openRect.top, 0.5));
+      expect(openRect.top, closeTo(overdueRect.top, 0.5));
+      expect(revenueRect.left, lessThan(openRect.left));
+      expect(openRect.left, lessThan(overdueRect.left));
+
+      // Keine Karte liegt ausserhalb des sichtbaren Bereichs.
+      expect(revenueRect.left, greaterThanOrEqualTo(-0.5));
+      expect(overdueRect.right, lessThanOrEqualTo(width + 0.5));
+
+      // CHF-Beträge sind vollständig (nicht gekürzt/abgeschnitten) vorhanden.
+      expect(find.text(Money.formatRappen(expectedRevenue)), findsOneWidget);
+      expect(find.text(Money.formatRappen(expectedOpenTotal)), findsOneWidget);
+      expect(
+        find.text(Money.formatRappen(expectedOverdueTotal)),
+        findsOneWidget,
+      );
+
+      expect(tester.takeException(), isNull);
+    }
+
+    for (final width in [320.0, 360.0, 375.0, 390.0, 430.0]) {
+      testWidgets(
+        'Alle drei Finanzkarten stehen bei ${width.toInt()}px nebeneinander, '
+        'ohne Overflow und mit vollständigen CHF-Beträgen',
+        (tester) async {
+          await pumpAtWidth(tester, width);
+          expectCardsSideBySideWithinScreen(tester, width);
+        },
+      );
+    }
+
+    testWidgets(
+      'Kein horizontaler Scrollbereich für die Finanzkarten auf Smartphonebreite',
+      (tester) async {
+        await pumpAtWidth(tester, 320);
+
+        final scrollableAncestors = tester.widgetList<Scrollable>(
+          find.ancestor(
+            of: find.byKey(const Key('finance_card_revenue')),
+            matching: find.byType(Scrollable),
+          ),
+        );
+        final hasHorizontalScrollable = scrollableAncestors.any(
+          (s) =>
+              s.axisDirection == AxisDirection.left ||
+              s.axisDirection == AxisDirection.right,
+        );
+        expect(hasHorizontalScrollable, isFalse);
+      },
+    );
+
+    testWidgets(
+      'Finanzkarten stehen im breiten Weblayout weiterhin korrekt nebeneinander',
+      (tester) async {
+        await pumpAtWidth(tester, 1600);
+        expectCardsSideBySideWithinScreen(tester, 1600);
+      },
+    );
+
+    testWidgets('Farblogik der Finanzkarten bleibt korrekt (Blau/Orange/Rot)', (
+      tester,
+    ) async {
+      await pumpAtWidth(tester, 375);
+
+      Color firstIconColor(String key) => tester
+          .widgetList<Icon>(
+            find.descendant(
+              of: find.byKey(Key(key)),
+              matching: find.byType(Icon),
+            ),
+          )
+          .first
+          .color!;
+
+      expect(firstIconColor('finance_card_revenue'), AppColors.sky600);
+      expect(firstIconColor('finance_card_open'), AppColors.privateOrange);
+      // Demo-Daten enthalten eine überfällige Rechnung -> Rot statt Grün.
+      expect(firstIconColor('finance_card_overdue'), AppColors.danger);
+    });
+  });
+
+  // ---------------------------------------------------------------------
+  // Hintergrundwellen: einmalige, akkuschonende Animation
+  // ---------------------------------------------------------------------
+
+  group('Hintergrundwellen-Animation', () {
+    testWidgets('Wellenanimation endet vollständig und läuft nicht endlos', (
+      tester,
+    ) async {
+      await tester.pumpWidget(wrapRootShell(isDemoMode: true));
+      // Die Animation dauert ca. 900ms – hier grosszügig darüber hinaus
+      // pumpen, damit sie sicher abgeschlossen ist.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 950));
+      expect(tester.binding.hasScheduledFrame, isFalse);
+
+      // Deutlich länger weiterlaufen lassen: bei einer fälschlich endlos
+      // laufenden Animation (Loop/Ticker ohne Stopp) wäre hier weiterhin ein
+      // Frame eingeplant.
+      await tester.pump(const Duration(seconds: 5));
+      expect(tester.binding.hasScheduledFrame, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Reduzierte Bewegung überspringt die Wellenanimation', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+
+      await tester.pumpWidget(wrapRootShell(isDemoMode: true));
+      await tester.pump();
+
+      // Ohne Bewegung wird sofort der Endzustand gezeigt, es läuft kein
+      // weiterer Animationsframe.
+      expect(tester.binding.hasScheduledFrame, isFalse);
+      expect(tester.takeException(), isNull);
+    });
+  });
 }

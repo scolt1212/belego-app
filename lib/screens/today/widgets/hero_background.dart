@@ -8,29 +8,102 @@ import '../../../theme/app_theme.dart';
 /// `TodayScreen`, das dies als unterste Ebene in einem `Stack` hinter dem
 /// scrollbaren Inhalt platziert). Bewusst als `CustomPainter` statt
 /// eingebetteter Bilddateien umgesetzt.
-class HeroBackground extends StatelessWidget {
+///
+/// Baut sich beim ersten Öffnen innerhalb einer App-Sitzung einmalig sanft
+/// auf (leichte Positionsbewegung + Einblenden, ~900ms) und steht danach
+/// vollständig still – kein Loop, kein dauerhafter Ticker. Da `TodayScreen`
+/// innerhalb eines `IndexedStack` lebt, bleibt dieser State beim Wechsel
+/// zwischen den unteren Tabs erhalten, wodurch die Animation dort nicht neu
+/// startet. Respektiert `MediaQuery.disableAnimations` (reduzierte
+/// Bewegung): in diesem Fall erscheinen die Wellen sofort in ihrer
+/// Endposition.
+class HeroBackground extends StatefulWidget {
   const HeroBackground({super.key});
 
   @override
+  State<HeroBackground> createState() => _HeroBackgroundState();
+}
+
+class _HeroBackgroundState extends State<HeroBackground>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _progress;
+  bool _started = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    _progress = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Nur beim allerersten Aufbau dieses States starten (einmal pro
+    // App-Sitzung, siehe Klassendokumentation) – MediaQuery ist in
+    // initState() noch nicht sicher verfügbar, daher hier statt dort.
+    if (_started) return;
+    _started = true;
+    if (MediaQuery.of(context).disableAnimations) {
+      _controller.value = 1;
+    } else {
+      _controller.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const IgnorePointer(
+    return IgnorePointer(
       child: RepaintBoundary(
-        child: SizedBox.expand(child: CustomPaint(painter: _WavePainter())),
+        child: SizedBox.expand(
+          child: AnimatedBuilder(
+            animation: _progress,
+            builder: (context, _) =>
+                CustomPaint(painter: _WavePainter(progress: _progress.value)),
+          ),
+        ),
       ),
     );
   }
 }
 
 class _WavePainter extends CustomPainter {
-  const _WavePainter();
+  const _WavePainter({required this.progress});
+
+  /// 0 = Startzustand (leicht verschoben, unsichtbar), 1 = Endzustand
+  /// (fertige Position, volle Deckkraft). Bereits ge-eased.
+  final double progress;
 
   @override
   void paint(Canvas canvas, Size size) {
-    _paintTopWaves(canvas, size);
-    _paintBottomWaves(canvas, size);
+    // Dezente Positionsbewegung: die Wellen gleiten aus einer leicht
+    // abgesetzten Position sanft in ihre endgültige Lage.
+    final settle = (1 - progress) * 18;
+    canvas.save();
+    canvas.translate(0, settle);
+    _paintTopWaves(canvas, size, progress);
+    canvas.restore();
+
+    canvas.save();
+    canvas.translate(0, -settle);
+    _paintBottomWaves(canvas, size, progress);
+    canvas.restore();
   }
 
-  void _paintTopWaves(Canvas canvas, Size size) {
+  void _paintTopWaves(Canvas canvas, Size size, double alpha) {
     final w = size.width;
     final h = size.height;
 
@@ -46,8 +119,8 @@ class _WavePainter extends CustomPainter {
     canvas.drawPath(
       back,
       Paint()
-        ..color = AppColors.sky100.withValues(alpha: 0.95)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 34),
+        ..color = AppColors.sky100.withValues(alpha: alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20),
     );
 
     // Zweite, etwas kräftigere Welle oben rechts – erzeugt die
@@ -62,8 +135,8 @@ class _WavePainter extends CustomPainter {
     canvas.drawPath(
       front,
       Paint()
-        ..color = AppColors.waveSecondary.withValues(alpha: 0.85)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 26),
+        ..color = AppColors.waveSecondary.withValues(alpha: 0.95 * alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 16),
     );
 
     // Feiner, kräftiger Akzentschimmer ganz oben rechts (Belego-Blau, sehr
@@ -72,12 +145,12 @@ class _WavePainter extends CustomPainter {
       Offset(w * 0.92, h * 0.02),
       w * 0.28,
       Paint()
-        ..color = AppColors.sky500.withValues(alpha: 0.10)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40),
+        ..color = AppColors.sky500.withValues(alpha: 0.14 * alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30),
     );
   }
 
-  void _paintBottomWaves(Canvas canvas, Size size) {
+  void _paintBottomWaves(Canvas canvas, Size size, double alpha) {
     final w = size.width;
     final h = size.height;
 
@@ -90,8 +163,8 @@ class _WavePainter extends CustomPainter {
     canvas.drawPath(
       back,
       Paint()
-        ..color = AppColors.sky100.withValues(alpha: 0.9)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 32),
+        ..color = AppColors.sky100.withValues(alpha: 0.95 * alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18),
     );
 
     final front = Path()
@@ -104,11 +177,12 @@ class _WavePainter extends CustomPainter {
     canvas.drawPath(
       front,
       Paint()
-        ..color = AppColors.waveSecondary.withValues(alpha: 0.8)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 24),
+        ..color = AppColors.waveSecondary.withValues(alpha: 0.9 * alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14),
     );
   }
 
   @override
-  bool shouldRepaint(covariant _WavePainter oldDelegate) => false;
+  bool shouldRepaint(covariant _WavePainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

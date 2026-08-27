@@ -6,7 +6,10 @@ import '../../../widgets/pressable.dart';
 
 /// Drei Karten mit Umsatz, offenen und überfälligen Rechnungen – berechnet
 /// aus den tatsächlich gespeicherten Rechnungen, siehe `TodayScreen` für die
-/// genaue Berechnung.
+/// genaue Berechnung. Bleiben auf jeder Smartphonebreite nebeneinander (siehe
+/// [_FinanceCard]); es gibt bewusst keine gestapelte Variante mehr, damit nie
+/// eine Karte ausserhalb des Bildschirms liegt oder seitlich gescrollt
+/// werden müsste.
 class FinanceOverviewSection extends StatelessWidget {
   const FinanceOverviewSection({
     super.key,
@@ -46,7 +49,11 @@ class FinanceOverviewSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 640;
+        // Stetiger Skalierungsfaktor statt fester Haltepunkte (z.B. „nur bei
+        // 375px“): 400 logische Pixel gelten als komfortable Breite für drei
+        // Karten, darunter wird alles proportional kompakter, nach oben hin
+        // wächst nichts mehr über die Komfort-Grösse hinaus.
+        final scale = (constraints.maxWidth / 400).clamp(0.6, 1.0);
         final revenueBadge = revenueRappen == 0
             ? _FinanceBadge(
                 icon: Icons.info_outline,
@@ -84,6 +91,7 @@ class FinanceOverviewSection extends StatelessWidget {
             title: revenueTitle,
             valueRappen: revenueRappen,
             badge: revenueBadge,
+            scale: scale,
           ),
           _FinanceCard(
             key: const Key('finance_card_open'),
@@ -103,6 +111,7 @@ class FinanceOverviewSection extends StatelessWidget {
               bg: AppColors.privateOrangeBg,
             ),
             onTap: onTapOpen,
+            scale: scale,
           ),
           _FinanceCard(
             key: const Key('finance_card_overdue'),
@@ -125,27 +134,21 @@ class FinanceOverviewSection extends StatelessWidget {
             ),
             onTap: onTapOverdue,
             emphasize: overdueCount > 0,
+            scale: scale,
           ),
         ];
 
-        if (!isWide) {
-          return Column(
+        final gap = (8 * scale).clamp(4.0, 8.0);
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (int i = 0; i < cards.length; i++) ...[
-                if (i > 0) const SizedBox(height: 12),
-                cards[i],
+                if (i > 0) SizedBox(width: gap),
+                Expanded(child: cards[i]),
               ],
             ],
-          );
-        }
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (int i = 0; i < cards.length; i++) ...[
-              if (i > 0) const SizedBox(width: 12),
-              Expanded(child: cards[i]),
-            ],
-          ],
+          ),
         );
       },
     );
@@ -175,6 +178,7 @@ class _FinanceCard extends StatelessWidget {
     required this.title,
     required this.valueRappen,
     required this.badge,
+    required this.scale,
     this.onTap,
     this.emphasize = false,
   });
@@ -185,12 +189,24 @@ class _FinanceCard extends StatelessWidget {
   final String title;
   final int valueRappen;
   final _FinanceBadge badge;
+  final double scale;
   final VoidCallback? onTap;
   final bool emphasize;
+
+  /// Skaliert [base] mit [scale], nie unter [min] – so bleibt jedes Element
+  /// auch auf sehr schmalen Geräten noch klar erkennbar statt zu
+  /// verschwinden.
+  double _s(double base, double min) => (base * scale).clamp(min, base);
 
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final iconBoxSize = _s(36, 24);
+    final iconSize = _s(18, 13);
+    final titleFontSize = _s(13, 10.5);
+    final valueFontSize = _s(19, 14);
+    final badgeFontSize = _s(11, 8.5);
+    final badgeIconSize = _s(12, 9);
     return Semantics(
       button: onTap != null,
       label: '$title: ${Money.formatRappen(valueRappen)}. ${badge.text}',
@@ -199,7 +215,7 @@ class _FinanceCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: tint == AppColors.surface
                   ? AppColors.border
@@ -208,51 +224,60 @@ class _FinanceCard extends StatelessWidget {
             boxShadow: AppShadows.card,
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(_s(16, 8)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: iconBoxSize,
+                  height: iconBoxSize,
                   decoration: BoxDecoration(
                     color: tint,
-                    borderRadius: BorderRadius.circular(11),
+                    borderRadius: BorderRadius.circular(_s(11, 7)),
                   ),
-                  child: Icon(icon, size: 18, color: accent),
+                  child: Icon(icon, size: iconSize, color: accent),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: _s(10, 5)),
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 13,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: titleFontSize,
                     fontWeight: FontWeight.w600,
+                    height: 1.15,
                     color: AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: _s(6, 3)),
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0, end: valueRappen.toDouble()),
                   duration: reduceMotion
                       ? Duration.zero
                       : const Duration(milliseconds: 700),
                   curve: Curves.easeOutCubic,
-                  builder: (context, animatedValue, child) => Text(
-                    Money.formatRappen(animatedValue.round()),
-                    style: TextStyle(
-                      fontSize: 19,
-                      fontWeight: FontWeight.w800,
-                      color: emphasize
-                          ? AppColors.danger
-                          : AppColors.textPrimary,
+                  builder: (context, animatedValue, child) => FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      Money.formatRappen(animatedValue.round()),
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: valueFontSize,
+                        fontWeight: FontWeight.w800,
+                        color: emphasize
+                            ? AppColors.danger
+                            : AppColors.textPrimary,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: _s(8, 4)),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: _s(8, 5),
+                    vertical: _s(4, 2),
                   ),
                   decoration: BoxDecoration(
                     color: badge.bg,
@@ -261,14 +286,15 @@ class _FinanceCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(badge.icon, size: 12, color: badge.color),
-                      const SizedBox(width: 4),
+                      Icon(badge.icon, size: badgeIconSize, color: badge.color),
+                      SizedBox(width: _s(4, 2)),
                       Flexible(
                         child: Text(
                           badge.text,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: badgeFontSize,
                             fontWeight: FontWeight.w700,
                             color: badge.color,
                           ),
