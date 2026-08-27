@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../models/appointment.dart';
 import '../models/company_profile.dart';
+import '../models/contact.dart';
 import '../models/invoice_draft.dart';
+import '../models/task_item.dart';
 import '../services/postal_code_service.dart';
+import '../theme/app_theme.dart';
 import 'documents/documents_screen.dart';
 import 'documents/invoice/invoice_editor_screen.dart';
 import 'placeholder_screen.dart';
@@ -37,6 +41,14 @@ class _RootShellState extends State<RootShell> {
   late final CompanyProfile _companyProfile =
       widget.companyProfile ?? CompanyProfile();
   final List<InvoiceDraft> _draftInvoices = [];
+  final List<Appointment> _appointments = [];
+  final List<TaskItem> _tasks = [];
+
+  /// Noch keine echte Kontaktverwaltung (kein „Kontakt hinzufügen“ im UI) –
+  /// diese Liste bleibt für echte Konten deshalb bewusst leer, siehe
+  /// `Contact` und ROADMAP.md.
+  final List<Contact> _contacts = [];
+  DocumentsFilter _documentsFilter = DocumentsFilter.all;
 
   /// Laufende Nummer für neu vergebene Rechnungsnummern. Wird erst beim
   /// ersten Speichern eines Entwurfs erhöht, nicht schon beim Öffnen des
@@ -44,25 +56,25 @@ class _RootShellState extends State<RootShell> {
   /// Formular keine Nummer.
   int _nextInvoiceSequence = 1;
 
-  static const List<BottomNavigationBarItem> _navItems = [
-    BottomNavigationBarItem(
+  static const List<NavigationDestination> _navItems = [
+    NavigationDestination(
       icon: Icon(Icons.today_outlined),
-      activeIcon: Icon(Icons.today),
+      selectedIcon: Icon(Icons.today),
       label: 'Heute',
     ),
-    BottomNavigationBarItem(
+    NavigationDestination(
       icon: Icon(Icons.smart_toy_outlined),
-      activeIcon: Icon(Icons.smart_toy),
+      selectedIcon: Icon(Icons.smart_toy),
       label: 'Assistent',
     ),
-    BottomNavigationBarItem(
+    NavigationDestination(
       icon: Icon(Icons.description_outlined),
-      activeIcon: Icon(Icons.description),
+      selectedIcon: Icon(Icons.description),
       label: 'Dokumente',
     ),
-    BottomNavigationBarItem(
+    NavigationDestination(
       icon: Icon(Icons.people_outline),
-      activeIcon: Icon(Icons.people),
+      selectedIcon: Icon(Icons.people),
       label: 'Kontakte',
     ),
   ];
@@ -116,16 +128,82 @@ class _RootShellState extends State<RootShell> {
     );
   }
 
+  /// Ändert den fachlichen Status einer Rechnung. „Als bezahlt markieren“
+  /// setzt zusätzlich `paidAt` auf jetzt (massgeblich für den Umsatz des
+  /// Monats); jeder andere Statuswechsel löscht `paidAt` wieder, damit keine
+  /// veraltete Zahlungsinformation stehen bleibt.
+  void _updateInvoiceStatus(InvoiceDraft draft, InvoiceStatus status) {
+    setState(() {
+      draft.status = status;
+      draft.paidAt = status == InvoiceStatus.paid ? DateTime.now() : null;
+    });
+  }
+
+  void _openDocumentsWithFilter(DocumentsFilter filter) {
+    setState(() {
+      _documentsFilter = filter;
+      _selectedIndex = 2;
+    });
+  }
+
+  void _addAppointment(Appointment appointment) {
+    setState(() => _appointments.add(appointment));
+  }
+
+  void _updateAppointment(Appointment appointment) {
+    setState(() {
+      final index = _appointments.indexWhere((a) => a.id == appointment.id);
+      if (index >= 0) _appointments[index] = appointment;
+    });
+  }
+
+  void _deleteAppointment(String id) {
+    setState(() => _appointments.removeWhere((a) => a.id == id));
+  }
+
+  void _addTask(TaskItem task) {
+    setState(() => _tasks.add(task));
+  }
+
+  void _toggleTask(String id) {
+    setState(() {
+      for (final task in _tasks) {
+        if (task.id == id) task.isDone = !task.isDone;
+      }
+    });
+  }
+
+  void _deleteTask(String id) {
+    setState(() => _tasks.removeWhere((task) => task.id == id));
+  }
+
   List<Widget> _buildScreens() => [
     TodayScreen(
       isDemoMode: widget.isDemoMode,
+      companyProfile: _companyProfile,
+      invoices: _draftInvoices,
+      companyIsVatLiable: _companyProfile.isVatLiable,
+      appointments: _appointments,
+      tasks: _tasks,
+      contacts: _contacts,
       onCreateInvoice: _createNewInvoice,
+      onOpenDocuments: _openDocumentsWithFilter,
+      onLeaveDemo: () => Navigator.of(context).pop(),
+      onAddAppointment: _addAppointment,
+      onUpdateAppointment: _updateAppointment,
+      onDeleteAppointment: _deleteAppointment,
+      onAddTask: _addTask,
+      onToggleTask: _toggleTask,
+      onDeleteTask: _deleteTask,
     ),
     const PlaceholderScreen(title: 'Assistent', icon: Icons.smart_toy_outlined),
     DocumentsScreen(
+      key: ValueKey(_documentsFilter),
       drafts: _draftInvoices,
       companyIsVatLiable: _companyProfile.isVatLiable,
       onOpenDraft: _openDraft,
+      onChangeStatus: _updateInvoiceStatus,
+      initialFilter: _documentsFilter,
     ),
     const PlaceholderScreen(title: 'Kontakte', icon: Icons.people_outline),
   ];
@@ -134,10 +212,29 @@ class _RootShellState extends State<RootShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _selectedIndex, children: _buildScreens()),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
-        items: _navItems,
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: AppColors.border),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.textPrimary.withValues(alpha: 0.10),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: NavigationBar(
+            selectedIndex: _selectedIndex,
+            onDestinationSelected: (index) =>
+                setState(() => _selectedIndex = index),
+            destinations: _navItems,
+          ),
+        ),
       ),
     );
   }

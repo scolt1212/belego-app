@@ -8,29 +8,58 @@ Regeln, bis der Nutzer sie ausdrücklich ändert.
 - **Framework:** Flutter, Zielplattformen Android, iOS und Web.
 - **State-Management:** vorläufig einfaches `setState` / `StatefulWidget`.
   Kein Provider, Riverpod, Bloc o.ä., solange nicht ausdrücklich gewünscht.
-- **Navigation:** `IndexedStack` + `BottomNavigationBar`, kein Routing-Paket
-  (kein `go_router`) ohne ausdrücklichen Auftrag.
+- **Navigation:** `IndexedStack` + `NavigationBar` (Material 3, offizielles
+  Flutter-Bordmittel, kein Zusatzpaket), kein Routing-Paket (kein
+  `go_router`) ohne ausdrücklichen Auftrag.
 - **Abhängigkeiten:** so wenig Zusatzpakete wie möglich. Neue Pakete nur
   hinzufügen, wenn es ohne sie unverhältnismässig aufwändig würde – und dann
   kurz begründen.
 
 ## Design
 
-- **Akzentfarbe:** ausschliesslich Sky-Blau (Tailwind `sky-500` `#0EA5E9`
-  und `sky-600` `#0284C7`). Kein weiterer Akzent- oder Markenfarbton.
-- **Hintergrund/Flächen:** Weiss und neutrale Grautöne (siehe
-  `lib/theme/app_theme.dart`, `AppColors`). Keine weiteren Buntfarben ausser
-  für semantische Zustände (z.B. Rot für überfällig).
-- **Struktur:** vier Tabs unten – Heute, Assistent, Dokumente, Kontakte.
-  Neue Hauptfunktionen werden diesen vier Tabs zugeordnet, nicht als
+- **Akzentfarbe:** ausschliesslich ein kräftiges Belego-Blau
+  (`AppColors.sky500`/`sky600`, `#0878F9`) als Haupt- und Aktionsfarbe. Kein
+  weiterer Akzent- oder Markenfarbton.
+- **Hintergrund/Flächen:** modernes Weiss/Hellblau als Grundlage – sehr
+  helles Hintergrundblau (`AppColors.background`/`sky50`, `#F6FAFF`), weisse
+  Karten (`AppColors.surface`) mit feinem, klar sichtbarem hellblauen Rahmen
+  (`AppColors.border`, `#DCE6F2`), siehe `lib/theme/app_theme.dart`,
+  `AppColors`. Grosse weiche, organische hellblaue Flächen im Hintergrund
+  (`lib/screens/today/widgets/hero_background.dart`) sind auf der
+  „Heute“-Seite ausdrücklich erwünscht, bleiben aber rein dekorativ
+  (`IgnorePointer`) und fix während des Scrollens. Dunkles Navy
+  (`AppColors.textPrimary`, `#071B49`) statt reinem Schwarz als Haupttext.
+  Keine weiteren Buntfarben ausser für semantische Zustände: Orange
+  (`AppColors.privateOrange`, `#F59E0B`) für private Termine/Aufgaben, Grün
+  (`AppColors.paidGreen`, `#20B66A`) ausschliesslich für Bezahlt/Erledigt
+  (nie für „Privat“), zurückhaltendes Rot (`AppColors.danger`) für Fehler
+  und überfällige Rechnungen, neutrales Grau (`AppColors.draftGrey`) für
+  Entwurf/keine Kategorie.
+- **Ausnahme Rechnungs-Vorschau/PDF:** Das Farbsystem der App-Oberfläche
+  gilt ausdrücklich NICHT für den eigentlichen Rechnungsinhalt.
+  `InvoicePreviewScreen` (späteres PDF) bleibt bewusst neutral in
+  Schwarz/Weiss/Grau.
+- **Struktur:** vier Tabs unten – Heute, Assistent, Dokumente, Kontakte, als
+  schwebende weisse Karte mit abgerundeten Ecken und Schatten
+  (`lib/screens/root_shell.dart`) statt einer flächigen Leiste. Neue
+  Hauptfunktionen werden diesen vier Tabs zugeordnet, nicht als
   zusätzlicher fünfter Tab.
 - **Eingabefelder:** einheitlich über das zentrale `inputDecorationTheme` in
   `lib/theme/app_theme.dart` gestaltet, nicht pro Feld einzeln. Jedes Feld
-  hat immer eine erkennbare hellgraue Umrandung (`AppColors.fieldBorder`),
+  hat immer eine erkennbare hellblaue Umrandung (`AppColors.fieldBorder`)
+  und einen leicht abgesetzten hellblauen Hintergrund (`AppColors.fieldFill`),
   bei Fokus deutlich sky-blau, bei Fehlern rot. Automatisch berechnete/
   vergebene Felder (z.B. Rechnungsnummer, Fälligkeitsdatum) verwenden
-  stattdessen die abweichende, dezent graue `_AutoField`-Optik mit
-  Schloss-Symbol, damit sie nicht wie kaputte Eingabefelder wirken.
+  stattdessen die abweichende, neutral graue `_AutoField`-Optik
+  (`AppColors.autoFieldFill`) mit Schloss-Symbol, damit sie nicht wie
+  kaputte oder normale Eingabefelder wirken.
+- **Rechnungsstatus:** `InvoiceDraft.status` (`draft`/`open`/`paid`) ist der
+  einzige gespeicherte Status. „Überfällig“ ist bewusst kein eigener Status,
+  sondern wird aus `status == open` und dem Fälligkeitsdatum abgeleitet
+  (`InvoiceDraft.isOverdue`), damit nie ein Widerspruch wie „überfällig und
+  bezahlt“ entstehen kann. Zahlungen werden ausschliesslich manuell über
+  „Als bezahlt markieren“ erfasst – niemals automatisch erkannt oder
+  erfunden (keine Bankanbindung).
 
 ## Sprache & Format
 

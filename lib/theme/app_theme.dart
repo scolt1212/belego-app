@@ -1,39 +1,107 @@
 import 'package:flutter/material.dart';
 
-/// Belego Farbpalette – babyblauer Akzent (Tailwind sky-500/600)
-/// auf weiss/grauem Hintergrund.
+/// Belego Farbpalette – modernes Weiss/Hellblau als Grundlage, kräftiges
+/// Belego-Blau als durchgehender Hauptakzent. Orange markiert private
+/// Termine/Aufgaben, Grün steht für Bezahlt/Erledigt, Rot für Fehler und
+/// überfällige Rechnungen, Grau für Entwurf/keine Kategorie – siehe
+/// CLAUDE.md. Wichtig: dieses Farbsystem gilt nur für die App-Oberfläche.
+/// Die Rechnungs-Vorschau (künftig PDF) bleibt bewusst neutral in
+/// Schwarz/Weiss/Grau, siehe `InvoicePreviewScreen`.
 class AppColors {
   AppColors._();
 
-  static const Color sky50 = Color(0xFFF0F9FF);
-  static const Color sky100 = Color(0xFFE0F2FE);
-  static const Color sky500 = Color(0xFF0EA5E9);
-  static const Color sky600 = Color(0xFF0284C7);
+  /// Kräftiges, klares Belego-Blau – der einzige durchgehende Hauptakzent.
+  static const Color sky500 = Color(0xFF0878F9);
+  static const Color sky600 = Color(0xFF0878F9);
 
-  static const Color background = Color(0xFFF9FAFB); // gray-50
+  /// Helles Blau für Tints, Badges und Eingabefeld-Hintergründe.
+  static const Color sky100 = Color(0xFFEAF4FF);
+
+  /// Sehr helles Hintergrundblau – Basis des Seitenhintergrunds.
+  static const Color sky50 = Color(0xFFF6FAFF);
+
+  /// Allgemeiner Seitenhintergrund.
+  static const Color background = Color(0xFFF6FAFF);
+
+  /// Kartenhintergrund – reines Weiss, hebt Karten vom Seitenhintergrund ab.
   static const Color surface = Colors.white;
-  static const Color border = Color(0xFFE5E7EB); // gray-200
 
-  /// Deutlich sichtbare Umrandung für interaktive Eingabefelder (Text,
-  /// Dropdown, Datum) – bewusst etwas kräftiger als [border], das für
-  /// Karten/Trennlinien verwendet wird. Immer sichtbar, auch ohne Fokus.
-  static const Color fieldBorder = Color(0xFFCBD5E1); // slate-300
+  /// Kartenrahmen – fein sichtbar, aber dezent.
+  static const Color border = Color(0xFFDCE6F2);
 
-  /// Sehr heller blaugrauer Hintergrund für editierbare Felder, damit sie
-  /// bereits ohne Fokus klar als Eingabefeld erkennbar sind (bewusst weder
-  /// reines Weiss noch identisch mit dem Seitenhintergrund).
-  static const Color fieldFill = Color(0xFFF1F5F9); // slate-100
+  /// Umrandung für interaktive Eingabefelder. Immer sichtbar, auch ohne
+  /// Fokus.
+  static const Color fieldBorder = Color(0xFFDCE6F2);
 
-  /// Dezenter Hintergrund für automatisch berechnete/vergebene Felder
-  /// (z.B. Rechnungsnummer, Fälligkeitsdatum), damit sie sich klar von
-  /// editierbaren Feldern unterscheiden.
-  static const Color autoFieldFill = Color(0xFFF3F4F6); // gray-100
+  /// Leicht hellblauer Hintergrund für editierbare Felder, damit sie bereits
+  /// ohne Fokus klar als Eingabefeld erkennbar sind.
+  static const Color fieldFill = Color(0xFFEAF4FF);
 
-  static const Color textPrimary = Color(0xFF111827); // gray-900
-  static const Color textSecondary = Color(0xFF6B7280); // gray-500
+  /// Dezenter, neutral-grauer Hintergrund für automatisch berechnete/
+  /// vergebene Felder (z.B. Rechnungsnummer, Fälligkeitsdatum) – bewusst
+  /// NICHT blau, damit sie sich klar von editierbaren Feldern unterscheiden.
+  static const Color autoFieldFill = Color(0xFFF1F3F6);
 
-  static const Color danger = Color(0xFFDC2626); // red-600
-  static const Color dangerBg = Color(0xFFFEF2F2); // red-50
+  /// Haupttext – dunkles Navy statt reinem Schwarz.
+  static const Color textPrimary = Color(0xFF071B49);
+
+  /// Sekundärtext – graublau.
+  static const Color textSecondary = Color(0xFF65738B);
+
+  /// Fehler/überfällig – zurückhaltendes Rot.
+  static const Color danger = Color(0xFFE45454);
+  static const Color dangerBg = Color(0xFFFCEBEB);
+
+  /// Kategorie „Geschäftlich“ (Termine/Aufgaben) – identisch mit dem
+  /// Hauptakzent.
+  static const Color businessBlue = sky500;
+
+  /// Kategorie „Privat“ (Termine/Aufgaben).
+  static const Color privateOrange = Color(0xFFF59E0B);
+  static const Color privateOrangeBg = Color(0xFFFEF3E0);
+
+  /// Status „Bezahlt“/„Erledigt“ – Grün bleibt ausschliesslich dafür
+  /// reserviert (nicht für „Privat“).
+  static const Color paidGreen = Color(0xFF20B66A);
+  static const Color paidGreenBg = Color(0xFFE7F8EF);
+
+  /// Status „Entwurf“ bzw. „keine Kategorie“ – neutrales Grau.
+  static const Color draftGrey = Color(0xFF8490A4);
+  static const Color draftGreyBg = Color(0xFFEEF1F4);
+
+  /// Zweiter, minimal kräftigerer Wellenton für den organischen
+  /// Seitenhintergrund der „Heute“-Seite (siehe `HeroBackground`).
+  static const Color waveSecondary = Color(0xFFDCEEFF);
+}
+
+/// Wiederverwendbarer weicher Kartenschatten für hervorgehobene Flächen auf
+/// der „Heute“-Seite (Finanzkarten, Diagramm, Kalender, Aufgaben,
+/// Schnellaktionen, schwebende Navigation) – bewusst zusätzlich zum
+/// `cardTheme`-Rahmen, nicht als globale Elevation, damit andere Screens
+/// (Rechnungseditor, Dokumente, Firmeneinrichtung) unverändert bleiben.
+class AppShadows {
+  AppShadows._();
+
+  static final List<BoxShadow> card = [
+    BoxShadow(
+      color: AppColors.textPrimary.withValues(alpha: 0.06),
+      blurRadius: 24,
+      offset: const Offset(0, 10),
+    ),
+  ];
+}
+
+/// Zentrale Abstandswerte, u.a. für die Startseite. Bildet zusammen mit
+/// [AppColors] die Grundlage, um später z.B. eine wählbare Akzentfarbe zu
+/// ergänzen, ohne Werte in jedem Widget einzeln anpassen zu müssen.
+class AppSpacing {
+  AppSpacing._();
+
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 16;
+  static const double lg = 20;
+  static const double xl = 32;
 }
 
 class AppTheme {
@@ -72,17 +140,37 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: AppColors.border),
         ),
       ),
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: AppColors.surface,
-        selectedItemColor: AppColors.sky600,
-        unselectedItemColor: AppColors.textSecondary,
-        type: BottomNavigationBarType.fixed,
-        showUnselectedLabels: true,
+      // Die eigentliche schwebende Navigationskarte wird in `RootShell`
+      // selbst gezeichnet (weisse Karte mit Schatten und Rand-Abstand);
+      // dieses Theme steuert nur Farben/Typografie der `NavigationBar`
+      // darin.
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        height: 64,
+        indicatorColor: AppColors.sky100,
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(
+            color: selected ? AppColors.sky600 : AppColors.textSecondary,
+          );
+        }),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return TextStyle(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? AppColors.sky600 : AppColors.textSecondary,
+          );
+        }),
       ),
       textTheme: ThemeData.light().textTheme.apply(
         bodyColor: AppColors.textPrimary,

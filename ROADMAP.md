@@ -5,17 +5,31 @@
 Alle Punkte in diesem Abschnitt funktionieren tatsächlich und sind durch
 `flutter test` abgedeckt.
 
-- Grundgerüst der App: Theme mit Sky-Blau-Akzent auf Weiss/Grau, einheitliche
-  Eingabefeld-Gestaltung über `lib/theme/app_theme.dart`
-  (`inputDecorationTheme`) – jedes Feld ist bereits ohne Fokus durch einen
-  sichtbaren grauen Rahmen und einen sehr hellen blaugrauen Hintergrund
-  als Eingabefeld erkennbar, bei Fokus deutlich sky-blau, bei Fehlern rot.
-  Automatisch berechnete/vergebene Felder verwenden bewusst eine andere,
-  graue „gesperrte“ Optik mit Schloss-Symbol. Einheitlich für Registrierung,
-  Anmeldung, Firmeneinrichtung und Rechnungseditor, nicht pro Feld einzeln
-  implementiert.
+- Grundgerüst der App: modernes Weiss/Hellblau-Farbsystem mit kräftigem
+  Belego-Blau als durchgehender Aktionsfarbe (`lib/theme/app_theme.dart`,
+  `AppColors`) – sehr helles Hintergrundblau (`background`/`sky50`), weisse
+  Karten mit feinem, klar sichtbarem hellblauen Rahmen (`surface`/`border`),
+  dunkles Navy als Haupttextfarbe (`textPrimary`). Orange für private
+  Termine/Aufgaben (`privateOrange`), Grün ausschliesslich für Bezahlt/
+  Erledigt (`paidGreen`), zurückhaltendes Rot für Fehler/überfällige
+  Rechnungen (`danger`), neutrales Grau für Entwurf/keine Kategorie
+  (`draftGrey`). Die Rechnungs-Vorschau (`InvoicePreviewScreen`, späteres
+  PDF) bleibt bewusst neutral in Schwarz/Weiss/Grau und übernimmt dieses
+  Farbsystem nicht. Einheitliche Eingabefeld-Gestaltung über
+  `inputDecorationTheme` – jedes Feld ist bereits ohne Fokus durch einen
+  sichtbaren hellblauen Rahmen und einen leicht abgesetzten hellblauen
+  Hintergrund als Eingabefeld erkennbar, bei Fokus deutlich sky-blau, bei
+  Fehlern rot. Automatisch berechnete/vergebene Felder verwenden bewusst
+  eine andere, neutral graue „gesperrte“ Optik mit Schloss-Symbol.
+  Einheitlich für Registrierung, Anmeldung, Firmeneinrichtung,
+  Rechnungseditor sowie den Termin- und Aufgaben-Dialog, nicht pro Feld
+  einzeln implementiert.
 - Tab-Navigation mit 4 Tabs (Heute, Assistent, Dokumente, Kontakte) via
-  `IndexedStack` + `BottomNavigationBar` (`lib/screens/root_shell.dart`).
+  `IndexedStack` + Material-3-`NavigationBar`, als schwebende weisse Karte
+  mit abgerundeten Ecken und Schatten über dem Bildschirmrand dargestellt
+  (`lib/screens/root_shell.dart`): aktiver Tab mit sky-blauem Symbol und
+  heller Markierungsfläche, inaktive Tabs gut lesbar grau, per `SafeArea`
+  vor Überlappung mit dem unteren Rand geschützt.
 - Startbildschirm, Demo-Modus mit „Demo verlassen“.
 - Registrierung mit vollständiger Validierung (Pflichtfelder, E-Mail-Format,
   Passwort ≥ 8 Zeichen, übereinstimmende Passwortbestätigung,
@@ -54,6 +68,115 @@ Alle Punkte in diesem Abschnitt funktionieren tatsächlich und sind durch
     verständlicher Meldung abgelehnt. Das Logo wird nur für die laufende
     App-Sitzung im `CompanyProfile` gehalten (siehe „Später geplant“ für
     dauerhafte Speicherung).
+- **Startseite „Heute“ im überarbeiteten, kartenbasierten Design**
+  (`lib/screens/today/today_screen.dart` + `lib/screens/today/widgets/`):
+  - Fester Seitenaufbau: Kopfbereich (Menü, Belego-Markenlogo,
+    Benachrichtigungen – `belego_top_bar.dart`), „Heute“-Überschrift,
+    Begrüssung, Finanzübersicht, Umsatzdiagramm, Schnellaktionen, Kalender,
+    Aufgaben, darüber grosse weiche hellblaue Hintergrundflächen
+    (`hero_background.dart`), die beim Scrollen fix bleiben. Jeder Bereich
+    erscheint genau einmal (testabgedeckt).
+  - Begrüssung mit zeitabhängigem Gruss („Guten Morgen“/„Guten Tag“/„Guten
+    Abend“) plus Vorname der Ansprechperson (falls vorhanden, blau
+    hervorgehoben) und dem aktuellen Datum in Schweizer Langform.
+  - Firmenlogo aus der Firmeneinrichtung wird direkt übernommen
+    (`CompanyProfile.logoBytes`, dieselben Daten wie in der
+    Rechnungsvorschau), proportional dargestellt
+    (`lib/widgets/company_logo_avatar.dart`). Ohne Logo erscheint ein
+    ruhiger Platzhalter mit den Firmen-Initialen bzw. einem neutralen
+    Symbol – nie ein defektes Bild.
+  - Echte Finanzübersicht mit drei Karten (Umsatz, offene Rechnungen,
+    überfällige Rechnungen), berechnet aus den tatsächlichen
+    Rechnungsstatus (`InvoiceDraft.status`: `draft`/`open`/`paid`,
+    `InvoiceDraft.isOverdue`). Ein Zeitraum-Filter („Diesen Monat“/„Dieses
+    Jahr“/„Gesamt“, `FinancePeriod`) ist echt funktional und beeinflusst
+    ausschliesslich die Umsatzkennzahl; offene/überfällige Rechnungen sind
+    immer der aktuelle Stand. Genaue Berechnungsregel siehe Kommentar in
+    `_TodayScreenState._computeFinance`: Entwürfe zählen nirgends mit, der
+    Umsatz ist die Summe der bezahlten Rechnungen mit Zahlungsdatum
+    (`paidAt`) im gewählten Zeitraum. Die prozentuale Veränderung zum
+    Vormonat wird nur bei „Diesen Monat“ und nur dann angezeigt, wenn der
+    Vormonat selbst einen Umsatz > 0 hatte (`_computeRevenueChangePercent`)
+    – ohne sinnvolle Vergleichsbasis erscheint ein neutraler Hinweis statt
+    einer erfundenen Zahl. Die Karte „Überfällige Rechnungen“ zeigt bei
+    null überfälligen Rechnungen bewusst eine positive Meldung („Alles im
+    grünen Bereich“) statt einer leeren Verneinung. Werte zählen sofort
+    nach jedem Statuswechsel neu (Count-up-Animation, ~700 ms, respektiert
+    `MediaQuery.disableAnimations`). Klick auf „Offene“/„Überfällige
+    Rechnungen“ öffnet den Dokumente-Tab mit passendem Filter
+    (`DocumentsFilter` in `lib/screens/documents/documents_screen.dart`).
+  - Animiertes Linien-/Flächendiagramm „Umsatz je Monat“
+    (`lib/screens/today/widgets/revenue_chart.dart`, eigener `CustomPainter`,
+    kein Chart-Paket) mit gestrichelten Gitterlinien, hervorgehobenem
+    letzten Datenpunkt und CHF-Wertblase, ausschliesslich aus bezahlten
+    Rechnungen für die letzten 6 Monate; baut sich beim ersten Anzeigen
+    sichtbar von links nach rechts auf (~800 ms, respektiert
+    `MediaQuery.disableAnimations`); ohne Umsatz erscheint eine ehrliche
+    leere Darstellung.
+  - Schnellaktionen mit genau vier Kacheln (kein Duplikat zum
+    Kalender-Bereich): „Rechnung erstellen“ öffnet den bestehenden
+    Rechnungseditor; „Offerte erstellen“, „Vertrag erstellen“ und „Kontakt
+    hinzufügen“ sind sichtbar als „Bald verfügbar“ markiert und bewusst
+    nicht antippbar, da diese Funktionen noch nicht existieren. „Vertrag
+    erstellen“ ist als spätere allgemeine Vertragsfunktion vorgesehen
+    (nicht nur Arbeitsverträge) – aktuell ausschliesslich als Kachel
+    vorbereitet, ohne jede Vertragslogik dahinter.
+    „Termin hinzufügen“ erscheint bewusst nur noch im Kalender-Bereich
+    (kein doppelter Button mehr).
+  - **Kalender mit Wochen- und Monatsansicht**
+    (`lib/screens/today/widgets/week_calendar_card.dart`): Umschalter
+    Woche/Monat, Blättern zu beliebigen vorherigen/folgenden Wochen bzw.
+    Monaten, direkte Monat-/Jahresauswahl über den nativen Datumswähler
+    (Antippen der Bereichsbeschriftung). Termine können für beliebige
+    vergangene und zukünftige Tage angelegt werden, Wochenenden sind
+    vollständig nutzbar. Markierung des heutigen Tages (immer sky-blau,
+    unabhängig von Terminkategorien) und Punkt-Indikatoren bei vorhandenen
+    Terminen – ein blauer Punkt für Geschäftlich, ein oranger für Privat,
+    beide gleichzeitig bei gemischten Tagen; dieselbe Kategorie-Farbe wird
+    auch in der Terminliste verwendet (Grün ist ausschliesslich für
+    Bezahlt/Erledigt reserviert). Neues Terminmodell
+    (`lib/models/appointment.dart`) mit Titel, Datum, Start-/Endzeit,
+    optionaler Notiz, Kategorie (Geschäftlich = Blau, Privat = Orange)
+    und optionaler Verknüpfung zu einem `Contact` (`contactId`). Termine
+    können hinzugefügt, bearbeitet und gelöscht werden
+    (`lib/screens/today/widgets/appointment_editor_dialog.dart`), mit
+    Validierung (Titel/Datum/Startzeit Pflicht, Endzeit nicht vor
+    Startzeit), separatem Beispieltext im Titelfeld, einer deutlichen
+    Warnung beim Neuanlegen eines Termins in der Vergangenheit (bestehende
+    vergangene Termine können weiterhin ohne Warnung angesehen/bearbeitet
+    werden) sowie einer optionalen Kontaktsuche: durchsucht die bekannten
+    Kontakte (`lib/models/contact.dart`) während der Eingabe, ein Treffer
+    zeigt Firma/Name plus Telefon/E-Mail/Adresse und wird per Antippen mit
+    dem Termin verknüpft, ohne den Titel zu verändern; ohne gespeicherte
+    Kontakte erscheint der ehrliche Hinweis „Noch keine Kontakte
+    gespeichert. Der Termin kann trotzdem erstellt werden.“ Es gibt noch
+    keine echte Kontaktverwaltung (kein „Kontakt hinzufügen“ im UI) – die
+    Kontaktliste bleibt für echte Konten deshalb leer, siehe „Später
+    geplant“.
+  - Kompakter Aufgabenbereich (`lib/screens/today/widgets/tasks_section.dart`)
+    mit Aufgabenmodell (`lib/models/task_item.dart`): hinzufügen,
+    erledigen/wieder öffnen, löschen, optionales Fälligkeitsdatum und
+    optionale Kategorie (Geschäftlich = Blau, Privat = Orange, keine
+    Kategorie = Grau), jeweils als farbiger Balken links an der
+    Aufgabenzeile sichtbar – nicht nur im Dialog.
+  - Dezente Animationen (Einblenden/Hochgleiten beim ersten Öffnen,
+    Druckanimation auf Karten/Kacheln über `lib/widgets/pressable.dart`,
+    sanfter Wechsel des ausgewählten Kalendertages, Count-up der
+    Finanzwerte, aufbauendes Umsatzdiagramm, kurze Ein-/Ausblend-Animation
+    beim Abhaken einer Aufgabe), respektieren
+    `MediaQuery.disableAnimations`.
+  - Responsive: einspaltig auf Smartphones, zweispaltig (Kalender/Aufgaben
+    nebeneinander) ab ausreichender Breite, vierspaltige Schnellaktionen ab
+    ausreichender Breite (sonst zweispaltig); Inhaltsbreite auf grossen
+    Bildschirmen auf 960 px begrenzt.
+  - **Wichtig – noch nicht dauerhaft gespeichert:** Termine, Aufgaben und
+    Kontakte leben nur im laufenden App-Zustand von `RootShell`
+    (`_appointments`/`_tasks`/`_contacts`), genau wie Rechnungsentwürfe.
+    Nach einem vollständigen Neustart der App sind sie weg (siehe „Später
+    geplant“).
+  - Demo-Modus zeigt auf „Heute“ zusätzlich vollständig getrennte, klar als
+    Beispiel erkennbare Demo-Termine/-Aufgaben/-Rechnungen, die nie den
+    echten App-Zustand (insbesondere den Dokumente-Tab) berühren.
 - Leerer Zustand auf „Heute“ für neu registrierte Benutzer, ohne fremde
   Beispieldaten.
 - Rechnungseditor (`lib/screens/documents/invoice/`):
@@ -77,29 +200,47 @@ Alle Punkte in diesem Abschnitt funktionieren tatsächlich und sind durch
   - Bildschirm-Vorschau und „Als Entwurf speichern“ mit Verwerfungsdialog
     bei ungespeicherten Änderungen; ohne Änderungen kann der Editor direkt
     verlassen werden.
-- Dokumententwürfe: gespeicherte Rechnungsentwürfe erscheinen im Tab
-  „Dokumente“, klar als „Entwurf“ gekennzeichnet, mit Rechnungsnummer,
-  Empfänger, Datum und Betrag; können erneut geöffnet und bearbeitet werden,
-  ohne dabei dupliziert zu werden. Zählen nicht als offene Forderung auf
-  „Heute“. Demo-Beispieldaten erscheinen ausschliesslich im Demo-Modus.
+- **Dokumentstatus** (`lib/screens/documents/documents_screen.dart`,
+  `lib/screens/documents/widgets/draft_list_tile.dart`): fünf Filter Alle/
+  Entwürfe/Offen/Bezahlt/Überfällig, mit farbigen Status-Chips (Entwurf
+  Grau/Beige, Offen Blau, Bezahlt Grün, Überfällig Rot) und animiertem
+  Statuswechsel. Ein Entwurf erscheint nur unter „Alle“ und „Entwürfe“,
+  niemals unter „Offen“. Über ein Aktionsmenü (⋮) an jeder Zeile kann ein
+  Entwurf über „Rechnung stellen“ auf `open` gesetzt und danach über „Als
+  bezahlt markieren“ auf `paid` gesetzt werden; eine bezahlte Rechnung kann
+  mit Bestätigung wieder auf „Offen“ zurückgesetzt werden. „Überfällig“ ist
+  keine eigene Statusoption, sondern wird immer aus `status == open` und
+  dem abgelaufenen Fälligkeitsdatum abgeleitet. Rechnungsnummer, Empfänger,
+  Datum und Betrag bleiben sichtbar; ein Dokument kann jederzeit erneut
+  geöffnet und bearbeitet werden, ohne dabei dupliziert zu werden.
+  Demo-Beispieldaten erscheinen ausschliesslich im Demo-Modus und
+  beeinflussen nie den echten Dokumente-Tab.
 - Begrenzte, zentrierte Inhaltsbreite auf grossen Bildschirmen, Formulare
   bleiben auf Smartphones gut bedienbar.
 
 ## Aktuell in Arbeit
 
-- Nichts – dieser Checkpoint schliesst Registrierung, Firmeneinrichtung,
-  Schweizer Adresssuche, Validierung und Rechnungserstellung als
-  produktionsnahe erste Version ab.
+- Nichts – dieser Checkpoint erneuert das visuelle Erscheinungsbild der
+  Startseite „Heute“ vollständig (neues Weiss/Hellblau-Farbsystem, grosse
+  Karten, animiertes Umsatzdiagramm, schwebende untere Navigation) und
+  erweitert den Kalender um eine echte Monatsansicht mit freier
+  Wochen-/Monatsnavigation, ohne bestehende Funktionen (Rechnungsstatus,
+  Umsatzberechnung, Kontaktsuche, Aufgabenverwaltung) zu verändern.
 
 ## Später geplant
 
 - Echte Authentifizierung und Backend-Anbindung (Login/Registrierung sind
   aktuell nur lokal klickbare Abläufe, kein echtes Benutzerkonto).
 - Dauerhafte lokale Speicherung bzw. Backend für Firmeneinrichtung,
-  Rechnungsentwürfe und das Firmenlogo (aktuell nur lokaler App-Zustand,
-  geht bei einem vollständigen Neustart der App verloren – für dauerhafte
-  Speicherung würde das Logo z.B. zusätzlich als Datei im
-  Anwendungsverzeichnis abgelegt und der Pfad persistiert werden müssen).
+  Rechnungen, Termine, Aufgaben, Kontakte und das Firmenlogo (aktuell nur
+  lokaler App-Zustand in `RootShell`, geht bei einem vollständigen Neustart
+  der App verloren – für dauerhafte Speicherung würde das Logo z.B.
+  zusätzlich als Datei im Anwendungsverzeichnis abgelegt und der Pfad
+  persistiert werden müssen; Termine/Aufgaben/Kontakte bräuchten eine
+  lokale Datenbank oder ein Backend). Die Modelle (`Appointment`,
+  `TaskItem`, `InvoiceDraft`, `Contact`) sind bereits mit eindeutigen IDs
+  versehen, damit eine spätere Speicherung ohne Datenmigration ergänzt
+  werden kann.
 - Aktualisierung der Schweizer PLZ-/Ortschaftsdaten bei neuen Ausgaben des
   swisstopo-Ortschaftenverzeichnisses (Bezugsweg in
   `assets/data/README.md` dokumentiert).
@@ -128,15 +269,36 @@ Alle Punkte in diesem Abschnitt funktionieren tatsächlich und sind durch
 - E-Mail-Versand von Rechnungen/Offerten.
 - Dauerhafte, pro Firma eindeutige Rechnungsnummernvergabe (aktuell nur
   lokal je App-Sitzung nachvollziehbar aus Jahr + laufender Nummer).
-- Auswahl bereits gespeicherter Kontakte als Rechnungsempfänger, sobald der
-  „Kontakte“-Tab eine echte Kontakt-Datenbank hat (aktuell wird der Kunde
-  pro Rechnung neu erfasst).
-- Kalenderfunktion / Terminübersicht.
+- **Echte Kontaktverwaltung** für den „Kontakte“-Tab (aktuell nur
+  Platzhalter): Kontakte anlegen/bearbeiten/löschen im UI („Kontakt
+  hinzufügen“ auf „Heute“ ist bewusst deaktiviert, bis das existiert),
+  Auswahl bereits gespeicherter Kontakte als Rechnungsempfänger (aktuell
+  wird der Kunde pro Rechnung neu erfasst). Das `Contact`-Modell und die
+  Verknüpfung von Terminen mit einem Kontakt (`Appointment.contactId`)
+  existieren bereits als Grundlage (siehe oben, „Kontaktsuche im
+  Termin-Dialog“) – für echte Konten bleibt die Kontaktliste aber leer,
+  bis diese Verwaltung existiert.
 - Inhalt für den „Assistent“-Tab (Konzept noch offen, kein KI-Assistent in
   dieser Version).
-- Inhalt für den „Kontakte“-Tab (Kunden/Lieferanten verwalten).
-- „Offerte erstellen“ als echte Funktion (aktuell ein ehrlicher
-  Platzhalter-Button: „Diese Funktion folgt in einem späteren Schritt.“).
-- Bezahlstatus für Rechnungen (bezahlt/überfällig/gemahnt).
-- Weitere Karten auf dem „Heute“-Screen (z.B. offene Aufgaben, letzte
-  Aktivitäten) – nach Bedarf.
+- „Offerte erstellen“ als echte Funktion (aktuell sichtbar als „Bald
+  verfügbar“ deaktiviert).
+- **Bankanbindung bzw. Open Banking, CAMT-Import und automatischer
+  Zahlungsabgleich.** Eine App kann nicht allein anhand des erstellten
+  QR-Codes erkennen, ob ein Zahlungseingang tatsächlich auf dem Bankkonto
+  eingetroffen ist – dafür wäre eine echte Bankanbindung, eine
+  Open-Banking-Schnittstelle oder ein CAMT-Import mit Backend nötig.
+  Deshalb gilt aktuell bewusst: Bezahlung wird ausschliesslich manuell über
+  „Als bezahlt markieren“ erfasst (`InvoiceDraft.status`/`paidAt`,
+  Dokumente-Tab), Überfälligkeit wird automatisch anhand des Datums
+  berechnet, und es werden nie simulierte oder erfundene Zahlungseingänge
+  angezeigt. Ein Mahnwesen (automatische Zahlungserinnerungen) ist damit
+  ebenfalls noch nicht umgesetzt.
+- **Echter Gewinn** (Umsatz abzüglich Ausgaben) setzt zusätzlich eine
+  Ausgabenerfassung voraus, die es noch nicht gibt; die App verwendet
+  bewusst nirgends den Begriff „Gewinn“.
+- **Frei wählbare Akzentfarbe**: Farben und Abstände sind zentral in
+  `lib/theme/app_theme.dart` (`AppColors`, `AppSpacing`) gebündelt; ein
+  Farbwähler selbst ist noch nicht implementiert.
+- „Vertrag erstellen“ als echte Funktion für allgemeine Verträge (aktuell
+  sichtbar als „Bald verfügbar“ deaktiviert, keinerlei Vertragslogik
+  vorbereitet).

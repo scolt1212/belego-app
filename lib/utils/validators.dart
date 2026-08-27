@@ -83,6 +83,16 @@ class Validators {
     return null;
   }
 
+  /// Für Termine: Endzeit darf nicht vor der Startzeit liegen. Beide Werte
+  /// als Minuten seit Mitternacht (bewusst kein `TimeOfDay`, damit diese
+  /// Datei ohne Flutter-Abhängigkeit bleibt).
+  static String? appointmentEndTime(int startMinutes, int endMinutes) {
+    if (endMinutes < startMinutes) {
+      return 'Die Endzeit darf nicht vor der Startzeit liegen.';
+    }
+    return null;
+  }
+
   /// Telefonnummer: strenge Schweizer Formatprüfung bei Land „Schweiz“,
   /// sonst eine allgemeinere internationale Plausibilitätsprüfung.
   static String? phoneNumber(String? value, {required bool isSwitzerland}) {

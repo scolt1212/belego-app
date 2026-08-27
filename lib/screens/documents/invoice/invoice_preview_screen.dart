@@ -197,6 +197,10 @@ class InvoicePreviewScreen extends StatelessWidget {
   }
 }
 
+/// Stellt den Rechnungsinhalt bewusst neutral in Schwarz/Weiss/Grau dar,
+/// unabhängig vom warmen Farbsystem der App-Oberfläche – diese Vorschau
+/// entspricht später dem gedruckten PDF (siehe CLAUDE.md, „Rechnungen &
+/// Offerten“).
 class _SectionCard extends StatelessWidget {
   const _SectionCard({required this.title, required this.children});
 
@@ -205,7 +209,12 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -216,11 +225,17 @@ class _SectionCard extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: AppColors.sky600,
+                color: Color(0xFF202124),
               ),
             ),
             const SizedBox(height: 10),
-            ...children,
+            DefaultTextStyle.merge(
+              style: const TextStyle(color: Color(0xFF202124)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: children,
+              ),
+            ),
           ],
         ),
       ),
