@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/contact_repository.dart';
 import '../../services/postal_code_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/validators.dart';
@@ -10,9 +11,14 @@ import 'register_screen.dart';
 /// Anmelde-Screen. Demonstriert den Ablauf lokal, ohne echte
 /// Authentifizierung oder Backend-Anbindung.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.postalCodeService});
+  const LoginScreen({
+    super.key,
+    required this.postalCodeService,
+    required this.contactRepository,
+  });
 
   final PostalCodeService postalCodeService;
+  final ContactRepository contactRepository;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -43,6 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
         builder: (_) => RootShell(
           isDemoMode: false,
           postalCodeService: widget.postalCodeService,
+          contactRepository: widget.contactRepository,
         ),
       ),
       (route) => false,
@@ -52,8 +59,10 @@ class _LoginScreenState extends State<LoginScreen> {
   void _openRegister() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) =>
-            RegisterScreen(postalCodeService: widget.postalCodeService),
+        builder: (_) => RegisterScreen(
+          postalCodeService: widget.postalCodeService,
+          contactRepository: widget.contactRepository,
+        ),
       ),
     );
   }

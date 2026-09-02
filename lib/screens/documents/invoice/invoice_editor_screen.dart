@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/company_profile.dart';
+import '../../../models/contact.dart';
 import '../../../models/invoice_draft.dart';
 import '../../../models/invoice_line_item.dart';
 import '../../../services/postal_code_service.dart';
@@ -23,6 +24,8 @@ class InvoiceEditorScreen extends StatefulWidget {
     required this.allocateInvoiceNumber,
     required this.onSaveDraft,
     this.existingDraft,
+    this.contacts = const [],
+    this.initialContact,
   });
 
   final CompanyProfile companyProfile;
@@ -35,6 +38,17 @@ class InvoiceEditorScreen extends StatefulWidget {
 
   /// Zum Bearbeiten eines bereits gespeicherten Entwurfs.
   final InvoiceDraft? existingDraft;
+
+  /// Als Kunde auswählbare, bereits gespeicherte Kontakte (reine
+  /// Lieferanten und archivierte Kontakte sind hier bereits ausgeschlossen,
+  /// siehe `RootShell._selectableInvoiceCustomers`).
+  final List<Contact> contacts;
+
+  /// Kunde, mit dem eine NEUE Rechnung sofort vorausgefüllt geöffnet wird
+  /// (z.B. „Rechnung erstellen“ auf der Kontakt-Detailseite). Wird bei
+  /// [existingDraft] ignoriert und verändert weder Positionen, MWST,
+  /// Zahlungsfrist noch Rechnungsnummer.
+  final Contact? initialContact;
 
   @override
   State<InvoiceEditorScreen> createState() => _InvoiceEditorScreenState();
@@ -84,31 +98,63 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
     }
 
     final customer = _draft.customer;
+    // Bei einer neuen Rechnung mit vorausgewähltem Kontakt (siehe
+    // `initialContact`) werden die Kontroller direkt mit dessen Angaben statt
+    // mit dem leeren `InvoiceCustomer` befüllt. Das geschieht bewusst schon
+    // hier bei der Konstruktion (statt per `.text =` danach) – so lösen die
+    // erst danach angehängten Dirty-Listener (`_dirty`) keinen `setState`
+    // während `initState` aus, und ein nur vorausgefülltes, noch nicht vom
+    // Nutzer verändertes Formular gilt zurecht nicht als „dirty“.
+    final prefillContact = widget.existingDraft == null
+        ? widget.initialContact
+        : null;
+    if (prefillContact != null) {
+      _draft.customer.contactId = prefillContact.id;
+    }
     _customerNameController = _dirty(
-      TextEditingController(text: customer.companyOrName),
+      TextEditingController(
+        text: prefillContact != null
+            ? (prefillContact.isCompany ? prefillContact.companyName : '')
+            : customer.companyOrName,
+      ),
     );
     _customerFirstNameController = _dirty(
-      TextEditingController(text: customer.firstName),
+      TextEditingController(
+        text: prefillContact != null
+            ? (prefillContact.isCompany ? '' : prefillContact.firstName)
+            : customer.firstName,
+      ),
     );
     _customerLastNameController = _dirty(
-      TextEditingController(text: customer.lastName),
+      TextEditingController(
+        text: prefillContact != null
+            ? (prefillContact.isCompany ? '' : prefillContact.lastName)
+            : customer.lastName,
+      ),
     );
     _customerStreetController = _dirty(
-      TextEditingController(text: customer.street),
+      TextEditingController(text: prefillContact?.street ?? customer.street),
     );
     _customerHouseNumberController = _dirty(
-      TextEditingController(text: customer.houseNumber),
+      TextEditingController(
+        text: prefillContact?.houseNumber ?? customer.houseNumber,
+      ),
     );
     _customerPostalCodeController = _dirty(
-      TextEditingController(text: customer.postalCode),
+      TextEditingController(
+        text: prefillContact?.postalCode ?? customer.postalCode,
+      ),
     );
     _customerCityController = _dirty(
-      TextEditingController(text: customer.city),
+      TextEditingController(text: prefillContact?.city ?? customer.city),
     );
     _customerEmailController = _dirty(
-      TextEditingController(text: customer.email),
+      TextEditingController(text: prefillContact?.email ?? customer.email),
     );
-    _customerCountry = customer.country;
+    _customerCountry =
+        (prefillContact != null && prefillContact.country.isNotEmpty)
+        ? prefillContact.country
+        : customer.country;
 
     _paymentTermController = _dirty(
       TextEditingController(text: '${_draft.paymentTermDays}'),
@@ -147,6 +193,30 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
     if (parsed != null && parsed > 0) {
       setState(() => _draft.paymentTermDays = parsed);
     }
+  }
+
+  /// Übernimmt Firma/Name, Adresse und E-Mail eines gewählten Kontakts in
+  /// die Formularfelder (weiterhin frei editierbar) und merkt sich dessen
+  /// stabile ID rein informativ auf dem Entwurf. Verändert bewusst keine
+  /// Positionen, Preise, MWST, Zahlungsfrist oder Rechnungsnummer.
+  void _handleContactSelected(Contact contact) {
+    _customerNameController.text = contact.isCompany ? contact.companyName : '';
+    _customerFirstNameController.text = contact.isCompany
+        ? ''
+        : contact.firstName;
+    _customerLastNameController.text = contact.isCompany
+        ? ''
+        : contact.lastName;
+    _customerStreetController.text = contact.street;
+    _customerHouseNumberController.text = contact.houseNumber;
+    _customerPostalCodeController.text = contact.postalCode;
+    _customerCityController.text = contact.city;
+    _customerEmailController.text = contact.email;
+    _draft.customer.contactId = contact.id;
+    setState(() {
+      if (contact.country.isNotEmpty) _customerCountry = contact.country;
+      _isDirty = true;
+    });
   }
 
   void _saveCustomer() {
@@ -332,6 +402,8 @@ class _InvoiceEditorScreenState extends State<InvoiceEditorScreen> {
                       cityController: _customerCityController,
                       postalCodeService: widget.postalCodeService,
                       emailController: _customerEmailController,
+                      contacts: widget.contacts,
+                      onContactSelected: _handleContactSelected,
                     ),
                     const SizedBox(height: 28),
                     InvoiceDetailsSection(

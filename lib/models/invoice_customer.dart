@@ -1,6 +1,14 @@
-/// Rechnungsempfänger. Noch keine echte Kontakt-Datenbank – die Angaben
-/// werden pro Rechnung erfasst (siehe ROADMAP.md für spätere Kontaktauswahl).
+/// Rechnungsempfänger. Die Angaben werden pro Rechnung als eigenständige
+/// Kopie erfasst – optional vorausgefüllt durch Auswahl eines gespeicherten
+/// [Contact] (siehe `lib/screens/contacts/`), aber danach unabhängig davon.
 class InvoiceCustomer {
+  /// Stabile ID des Kontakts, aus dem diese Angaben ursprünglich übernommen
+  /// wurden – rein informativ (z.B. um zu prüfen, ob ein Kontakt noch
+  /// verwendet wird). Ändert NICHTS an bereits gestellten Rechnungen, wenn
+  /// der verknüpfte Kontakt später bearbeitet wird: die Felder unten bleiben
+  /// die massgebliche, unabhängige Kopie zum Zeitpunkt der Auswahl.
+  String? contactId;
+
   String companyOrName = '';
   String firstName = '';
   String lastName = '';

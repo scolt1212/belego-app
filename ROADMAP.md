@@ -17,13 +17,16 @@ Alle Punkte in diesem Abschnitt funktionieren tatsächlich und sind durch
   PDF) bleibt bewusst neutral in Schwarz/Weiss/Grau und übernimmt dieses
   Farbsystem nicht. Einheitliche Eingabefeld-Gestaltung über
   `inputDecorationTheme` – jedes Feld ist bereits ohne Fokus durch einen
-  sichtbaren hellblauen Rahmen und einen leicht abgesetzten hellblauen
-  Hintergrund als Eingabefeld erkennbar, bei Fokus deutlich sky-blau, bei
-  Fehlern rot. Automatisch berechnete/vergebene Felder verwenden bewusst
-  eine andere, neutral graue „gesperrte“ Optik mit Schloss-Symbol.
-  Einheitlich für Registrierung, Anmeldung, Firmeneinrichtung,
-  Rechnungseditor sowie den Termin- und Aufgaben-Dialog, nicht pro Feld
-  einzeln implementiert.
+  sichtbaren graublauen Rahmen (`AppColors.fieldBorder`, bewusst deutlicher
+  als der dezente Kartenrahmen `AppColors.border`, damit ein Feld nicht mit
+  einer reinen Flächenkante verwechselt wird) und einen leicht abgesetzten
+  hellblauen Hintergrund als Eingabefeld erkennbar, bei Fokus deutlich
+  sky-blau, bei Fehlern rot. Automatisch berechnete/vergebene Felder
+  verwenden bewusst eine andere, neutral graue „gesperrte“ Optik mit
+  Schloss-Symbol. Einheitlich für Registrierung, Anmeldung,
+  Firmeneinrichtung, Rechnungseditor, Kontakteditor sowie den Termin- und
+  Aufgaben-Dialog, nicht pro Feld einzeln implementiert – eine Änderung an
+  `AppColors.fieldBorder` wirkt sich automatisch auf alle Formulare aus.
 - Tab-Navigation mit 4 Tabs (Heute, Assistent, Dokumente, Kontakte) via
   `IndexedStack` + Material-3-`NavigationBar`, als schwebende weisse Karte
   mit abgerundeten Ecken und Schatten über dem Bildschirmrand dargestellt
@@ -115,12 +118,13 @@ Alle Punkte in diesem Abschnitt funktionieren tatsächlich und sind durch
     leere Darstellung.
   - Schnellaktionen mit genau vier Kacheln (kein Duplikat zum
     Kalender-Bereich): „Rechnung erstellen“ öffnet den bestehenden
-    Rechnungseditor; „Offerte erstellen“, „Vertrag erstellen“ und „Kontakt
-    hinzufügen“ sind sichtbar als „Bald verfügbar“ markiert und bewusst
-    nicht antippbar, da diese Funktionen noch nicht existieren. „Vertrag
-    erstellen“ ist als spätere allgemeine Vertragsfunktion vorgesehen
-    (nicht nur Arbeitsverträge) – aktuell ausschliesslich als Kachel
-    vorbereitet, ohne jede Vertragslogik dahinter.
+    Rechnungseditor, „Kontakt hinzufügen“ öffnet denselben Kontakteditor wie
+    im „Kontakte“-Tab (siehe dort). „Offerte erstellen“ und „Vertrag
+    erstellen“ sind weiterhin sichtbar als „Bald verfügbar“ markiert und
+    bewusst nicht antippbar, da diese Funktionen noch nicht existieren.
+    „Vertrag erstellen“ ist als spätere allgemeine Vertragsfunktion
+    vorgesehen (nicht nur Arbeitsverträge) – aktuell ausschliesslich als
+    Kachel vorbereitet, ohne jede Vertragslogik dahinter.
     „Termin hinzufügen“ erscheint bewusst nur noch im Kalender-Bereich
     (kein doppelter Button mehr).
   - **Kalender mit Wochen- und Monatsansicht**
@@ -149,10 +153,11 @@ Alle Punkte in diesem Abschnitt funktionieren tatsächlich und sind durch
     zeigt Firma/Name plus Telefon/E-Mail/Adresse und wird per Antippen mit
     dem Termin verknüpft, ohne den Titel zu verändern; ohne gespeicherte
     Kontakte erscheint der ehrliche Hinweis „Noch keine Kontakte
-    gespeichert. Der Termin kann trotzdem erstellt werden.“ Es gibt noch
-    keine echte Kontaktverwaltung (kein „Kontakt hinzufügen“ im UI) – die
-    Kontaktliste bleibt für echte Konten deshalb leer, siehe „Später
-    geplant“.
+    gespeichert. Der Termin kann trotzdem erstellt werden.“ Die Kontakte
+    stammen aus der echten Kontaktverwaltung im „Kontakte“-Tab
+    (`lib/screens/contacts/`, siehe eigener Punkt unten) – für neu
+    registrierte Konten ohne eigene Kontakte erscheint dieser Hinweis
+    ehrlich so lange, bis der Nutzer selbst Kontakte anlegt.
   - Kompakter Aufgabenbereich (`lib/screens/today/widgets/tasks_section.dart`)
     mit Aufgabenmodell (`lib/models/task_item.dart`): hinzufügen,
     erledigen/wieder öffnen, löschen, optionales Fälligkeitsdatum und
@@ -170,10 +175,12 @@ Alle Punkte in diesem Abschnitt funktionieren tatsächlich und sind durch
     ausreichender Breite (sonst zweispaltig); Inhaltsbreite auf grossen
     Bildschirmen auf 960 px begrenzt.
   - **Wichtig – noch nicht dauerhaft gespeichert:** Termine, Aufgaben und
-    Kontakte leben nur im laufenden App-Zustand von `RootShell`
-    (`_appointments`/`_tasks`/`_contacts`), genau wie Rechnungsentwürfe.
-    Nach einem vollständigen Neustart der App sind sie weg (siehe „Später
-    geplant“).
+    Rechnungsentwürfe leben weiterhin nur im laufenden App-Zustand von
+    `RootShell` (`_appointments`/`_tasks`/`_draftInvoices`). Nach einem
+    vollständigen Neustart der App sind sie weg (siehe „Später geplant“).
+    **Kontakte sind seit dem „Kontakte“-Tab die erste Ausnahme davon** und
+    werden echt lokal auf dem Gerät gespeichert (siehe eigener Punkt
+    unten) – sie überleben einen App-Neustart bereits.
   - Demo-Modus zeigt auf „Heute“ zusätzlich vollständig getrennte, klar als
     Beispiel erkennbare Demo-Termine/-Aufgaben/-Rechnungen, die nie den
     echten App-Zustand (insbesondere den Dokumente-Tab) berühren.
@@ -215,32 +222,123 @@ Alle Punkte in diesem Abschnitt funktionieren tatsächlich und sind durch
   geöffnet und bearbeitet werden, ohne dabei dupliziert zu werden.
   Demo-Beispieldaten erscheinen ausschliesslich im Demo-Modus und
   beeinflussen nie den echten Dokumente-Tab.
+- **Echte Kontaktverwaltung im „Kontakte“-Tab**
+  (`lib/screens/contacts/`, `lib/models/contact.dart`,
+  `lib/services/contact_repository.dart`): Kontakte anlegen, bearbeiten,
+  sicher löschen/archivieren, mit Suche und Filtern.
+  - Kontaktart Kunde/Lieferant/beides (zwei unabhängige Merkmale
+    `isCustomer`/`isSupplier`, kombinierbar, nicht gegenseitig
+    ausschliessend), Firma-oder-Privatperson, alle Adress- und
+    Kontaktfelder aus Auftrag „Kontakte“. Adresse ist nur Pflicht, wenn der
+    Kontakt (auch) als Kunde markiert ist – ein reiner Lieferant kann ohne
+    Adresse gespeichert werden (`SwissAddressFields.addressRequired`,
+    `StructuredAddressFields.addressRequired`, Standard weiterhin `true`
+    für Firmeneinrichtung/Rechnungskunde). Dieselbe strukturierte
+    Adresslogik und amtliche PLZ-/Ortssuche wie Firmeneinrichtung und
+    Rechnungseditor (kein zweites Feldsystem). Telefon- und
+    IBAN-Validierung/-Normalisierung über dieselben bestehenden
+    Hilfsfunktionen wie in der Firmeneinrichtung. Bei einer Firma kann
+    zusätzlich eine optionale Ansprechperson (Vor-/Nachname) erfasst
+    werden – dasselbe Modellfeld wie bei einer Privatperson
+    (`Contact.firstName`/`lastName`, siehe Klassendokumentation), kein
+    zusätzliches Feld nötig.
+  - **IBAN nur wo sinnvoll:** Das IBAN-Feld erscheint im Kontakteditor nur,
+    wenn der Kontakt (auch) als Lieferant markiert ist – bei einem reinen
+    Kunden ist eine IBAN in aller Regel nicht nötig und wird deshalb gar
+    nicht erst angezeigt. Der Wert bleibt beim Ein-/Ausblenden unangetastet
+    im Formular erhalten (kein Datenverlust beim Wechsel der Kontaktart),
+    dieselbe echte Modulo-97-Prüfung wie überall sonst
+    (`Validators.iban`/`Iban`). Auf der Detailseite erscheint die IBAN
+    ebenfalls nur unter „Zahlungsangaben“ und nur, wenn vorhanden UND die
+    Lieferantenrolle (noch) gesetzt ist – unabhängig von der normalen
+    Firmen-IBAN des App-Nutzers und der Schweizer QR-Rechnung, die davon
+    nicht betroffen sind.
+  - Liste mit Suche (Firma, Vorname/Nachname, E-Mail, Telefon, PLZ, Ort –
+    live, ohne die App neu aufzubauen) und Filtern Alle/Kunden/Lieferanten;
+    Kunde blau, Lieferant orange, beide Kategorien gleichzeitig sichtbar
+    als eigene Chips, Grün bleibt ausschliesslich für Bezahlt/Erledigt
+    reserviert.
+  - Jeder Kontakt erhält eine stabile ID (`IdGenerator`, nie aus dem Namen
+    abgeleitet), die auch beim Bearbeiten unverändert bleibt.
+  - **Sicheres Löschen:** Ein Kontakt, der bereits von mindestens einer
+    Rechnung oder einem Termin verwendet wird (Prüfung über die stabile
+    ID, `RootShell._isContactInUse`), wird beim Löschen automatisch
+    stattdessen archiviert (`Contact.isArchived`) statt entfernt – so
+    bleiben bestehende Rechnungen und Termine unverändert lesbar.
+    Archivierte Kontakte bleiben in der Liste sichtbar (mit „Archiviert“-
+    Chip, Detailansicht mit „Reaktivieren“), erscheinen aber nicht mehr in
+    der Kundenauswahl im Rechnungseditor.
+  - **Verknüpfung mit Rechnungen:** `InvoiceCustomerSection` bietet
+    zusätzlich zur weiterhin möglichen manuellen Eingabe eine Suche über
+    bereits gespeicherte Kunden; eine Auswahl übernimmt Firma/Name und
+    Adresse in die bestehenden Felder, ohne Positionen, MWST, Zahlungsfrist
+    oder Rechnungsnummer zu verändern. `InvoiceCustomer.contactId` hält
+    dabei nur eine informative Momentaufnahme der Herkunft fest – eine
+    einmal ausgestellte Rechnung liest nie nachträglich aktuelle
+    Kontaktdaten nach, auch wenn der Kontakt später bearbeitet wird. Reine
+    Lieferanten (nicht gleichzeitig als Kunde markiert) sowie archivierte
+    Kontakte erscheinen bewusst nicht in dieser Auswahl
+    (`RootShell._selectableInvoiceCustomers`).
+  - **Verknüpfung mit Terminen:** Die bereits bestehende Kontaktsuche im
+    Termin-Dialog auf „Heute“ (`Appointment.contactId`) verwendet jetzt
+    dieselben, echten Kontakte aus diesem Tab statt nur der bisherigen
+    Vorbereitung.
+  - **Detailseite mit echten Schnellaktionen:** Kopfkarte (Name, Kontaktart-
+    Chips, Ansprechperson), danach nur tatsächlich funktionierende
+    Aktionen – „Bearbeiten“ immer, „Rechnung erstellen“ nur bei
+    Kundenrolle, „Termin erstellen“ immer. Beide öffnen den bestehenden
+    Rechnungseditor bzw. Termin-Dialog vorausgefüllt/vorverknüpft mit
+    diesem Kontakt (`InvoiceEditorScreen.initialContact`,
+    `AppointmentEditorDialog.initialContact`), ohne Positionen/MWST/
+    Zahlungsfrist/Rechnungsnummer bzw. den Termintitel zu verändern.
+    „Anrufen“/„E-Mail“ sind bewusst NICHT umgesetzt: ohne eine neue
+    Paketabhängigkeit (z.B. `url_launcher`) lässt sich `tel:`/`mailto:`
+    plattformübergreifend (Android/iOS/Web) nicht zuverlässig öffnen –
+    lieber ehrlich weglassen als eine optisch aktive, aber funktionslose
+    Schaltfläche zeigen. Adresse/Kontaktdaten/Zahlungsangaben/Notiz
+    erscheinen als eigene Karten, aber nur, wenn dafür tatsächlich Daten
+    vorhanden sind. „Löschen“/„Archivieren“ ist bewusst zurückhaltend
+    (einfacher Text-Button, kein gleich stark hervorgehobener Button wie
+    die Schnellaktionen) platziert.
+  - Die Schnellaktion „Kontakt hinzufügen“ auf „Heute“ ist jetzt aktiv (kein
+    „Bald verfügbar“ mehr) und öffnet denselben Kontakteditor wie im
+    Kontakte-Tab – kein zweiter Editor, dieselbe Validierung und
+    Speicherung; ein neu gespeicherter Kontakt ist sofort im Kontakte-Tab
+    sichtbar.
+  - **Speicherung:** Kontakte werden über `ContactRepository`
+    (`package:shared_preferences`) lokal auf dem Gerät gespeichert – nicht
+    an ein Konto oder einen Server gebunden, kein Backend. Das einzige neue
+    Zusatzpaket dieses Bereichs, da Flutter kein offizielles Bordmittel für
+    dauerhafte Schlüssel-Wert-Speicherung mitbringt und eine eigene
+    Implementierung unverhältnismässig aufwändig wäre. Demo-Modus verwendet
+    eigene, unabhängige Beispielkontakte (`RootShell._demoContacts`), die
+    nie gespeichert und nie mit echten Kontakten vermischt werden.
 - Begrenzte, zentrierte Inhaltsbreite auf grossen Bildschirmen, Formulare
   bleiben auf Smartphones gut bedienbar.
 
 ## Aktuell in Arbeit
 
-- Nichts – dieser Checkpoint erneuert das visuelle Erscheinungsbild der
-  Startseite „Heute“ vollständig (neues Weiss/Hellblau-Farbsystem, grosse
-  Karten, animiertes Umsatzdiagramm, schwebende untere Navigation) und
-  erweitert den Kalender um eine echte Monatsansicht mit freier
-  Wochen-/Monatsnavigation, ohne bestehende Funktionen (Rechnungsstatus,
-  Umsatzberechnung, Kontaktsuche, Aufgabenverwaltung) zu verändern.
+- Nichts – dieser Checkpoint macht den „Kontakte“-Tab vollständig
+  funktionsfähig (siehe „Bereits erledigt“) und verbindet ihn sauber mit
+  Rechnungen und Terminen, ohne die „Heute“-Seite oder ihr Design weiter zu
+  verändern.
 
 ## Später geplant
 
 - Echte Authentifizierung und Backend-Anbindung (Login/Registrierung sind
   aktuell nur lokal klickbare Abläufe, kein echtes Benutzerkonto).
 - Dauerhafte lokale Speicherung bzw. Backend für Firmeneinrichtung,
-  Rechnungen, Termine, Aufgaben, Kontakte und das Firmenlogo (aktuell nur
-  lokaler App-Zustand in `RootShell`, geht bei einem vollständigen Neustart
-  der App verloren – für dauerhafte Speicherung würde das Logo z.B.
-  zusätzlich als Datei im Anwendungsverzeichnis abgelegt und der Pfad
-  persistiert werden müssen; Termine/Aufgaben/Kontakte bräuchten eine
-  lokale Datenbank oder ein Backend). Die Modelle (`Appointment`,
-  `TaskItem`, `InvoiceDraft`, `Contact`) sind bereits mit eindeutigen IDs
-  versehen, damit eine spätere Speicherung ohne Datenmigration ergänzt
-  werden kann.
+  Rechnungen, Termine, Aufgaben und das Firmenlogo (aktuell nur lokaler
+  App-Zustand in `RootShell`, geht bei einem vollständigen Neustart der App
+  verloren – für dauerhafte Speicherung würde das Logo z.B. zusätzlich als
+  Datei im Anwendungsverzeichnis abgelegt und der Pfad persistiert werden
+  müssen; Termine/Aufgaben/Rechnungen bräuchten eine lokale Datenbank oder
+  ein Backend). **Kontakte sind hiervon bereits ausgenommen** – sie werden
+  seit dem „Kontakte“-Tab echt lokal gespeichert (`ContactRepository`,
+  `package:shared_preferences`, siehe „Bereits erledigt“). Die übrigen
+  Modelle (`Appointment`, `TaskItem`, `InvoiceDraft`) sind bereits mit
+  eindeutigen IDs versehen, damit eine spätere Speicherung ohne
+  Datenmigration ergänzt werden kann.
 - Aktualisierung der Schweizer PLZ-/Ortschaftsdaten bei neuen Ausgaben des
   swisstopo-Ortschaftenverzeichnisses (Bezugsweg in
   `assets/data/README.md` dokumentiert).
@@ -269,15 +367,11 @@ Alle Punkte in diesem Abschnitt funktionieren tatsächlich und sind durch
 - E-Mail-Versand von Rechnungen/Offerten.
 - Dauerhafte, pro Firma eindeutige Rechnungsnummernvergabe (aktuell nur
   lokal je App-Sitzung nachvollziehbar aus Jahr + laufender Nummer).
-- **Echte Kontaktverwaltung** für den „Kontakte“-Tab (aktuell nur
-  Platzhalter): Kontakte anlegen/bearbeiten/löschen im UI („Kontakt
-  hinzufügen“ auf „Heute“ ist bewusst deaktiviert, bis das existiert),
-  Auswahl bereits gespeicherter Kontakte als Rechnungsempfänger (aktuell
-  wird der Kunde pro Rechnung neu erfasst). Das `Contact`-Modell und die
-  Verknüpfung von Terminen mit einem Kontakt (`Appointment.contactId`)
-  existieren bereits als Grundlage (siehe oben, „Kontaktsuche im
-  Termin-Dialog“) – für echte Konten bleibt die Kontaktliste aber leer,
-  bis diese Verwaltung existiert.
+- Die Kachel „Kontakt hinzufügen“ in den Schnellaktionen auf „Heute“ ist
+  weiterhin als „Bald verfügbar“ deaktiviert; sie mit dem neuen
+  „Kontakte“-Tab zu verknüpfen (echte Kontaktverwaltung existiert bereits,
+  siehe „Bereits erledigt“) wäre eine Änderung an der „Heute“-Seite und war
+  bewusst nicht Teil des Auftrags „Kontakte“.
 - Inhalt für den „Assistent“-Tab (Konzept noch offen, kein KI-Assistent in
   dieser Version).
 - „Offerte erstellen“ als echte Funktion (aktuell sichtbar als „Bald

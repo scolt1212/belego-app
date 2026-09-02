@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'screens/start/start_screen.dart';
+import 'services/contact_repository.dart';
 import 'services/postal_code_service.dart';
 import 'theme/app_theme.dart';
 
@@ -16,13 +17,26 @@ Future<void> main() async {
   // assets/data/README.md), danach läuft die Suche rein lokal/offline.
   final postalCodeEntries = await PostalCodeService.loadEntriesFromAsset();
   final postalCodeService = PostalCodeService(entries: postalCodeEntries);
-  runApp(BelegoApp(postalCodeService: postalCodeService));
+  // Dauerhaft gespeicherte, echte Kontakte einmalig laden (siehe
+  // ROADMAP.md); alle folgenden Lese-/Schreibzugriffe sind danach synchron.
+  final contactRepository = await ContactRepository.load();
+  runApp(
+    BelegoApp(
+      postalCodeService: postalCodeService,
+      contactRepository: contactRepository,
+    ),
+  );
 }
 
 class BelegoApp extends StatelessWidget {
-  const BelegoApp({super.key, required this.postalCodeService});
+  const BelegoApp({
+    super.key,
+    required this.postalCodeService,
+    required this.contactRepository,
+  });
 
   final PostalCodeService postalCodeService;
+  final ContactRepository contactRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +51,10 @@ class BelegoApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: StartScreen(postalCodeService: postalCodeService),
+      home: StartScreen(
+        postalCodeService: postalCodeService,
+        contactRepository: contactRepository,
+      ),
     );
   }
 }

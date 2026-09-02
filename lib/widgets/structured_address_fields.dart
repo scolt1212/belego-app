@@ -29,6 +29,7 @@ class StructuredAddressFields extends StatelessWidget {
     required this.postalCodeController,
     required this.cityController,
     required this.postalCodeService,
+    this.addressRequired = true,
   });
 
   final GlobalKey<FormState> formKey;
@@ -42,6 +43,12 @@ class StructuredAddressFields extends StatelessWidget {
   final TextEditingController postalCodeController;
   final TextEditingController cityController;
   final PostalCodeService postalCodeService;
+
+  /// Ob Strasse, Hausnummer, PLZ und Ort ausgefüllt sein müssen.
+  /// Standardmässig `true` (Firmeneinrichtung, Rechnungsempfänger). Bei
+  /// `false` bleiben leere Felder gültig – z.B. für einen Kontakt, der nur
+  /// Lieferant und kein rechnungsfähiger Kunde ist.
+  final bool addressRequired;
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +76,7 @@ class StructuredAddressFields extends StatelessWidget {
           cityController: cityController,
           postalCodeService: postalCodeService,
           enabled: country == 'Schweiz',
+          addressRequired: addressRequired,
         ),
         const SizedBox(height: 16),
         Row(
@@ -79,8 +87,12 @@ class StructuredAddressFields extends StatelessWidget {
                 key: streetKey,
                 controller: streetController,
                 decoration: const InputDecoration(labelText: 'Strasse'),
-                validator: (v) =>
-                    Validators.required(v, message: 'Bitte Strasse eingeben'),
+                validator: addressRequired
+                    ? (v) => Validators.required(
+                        v,
+                        message: 'Bitte Strasse eingeben',
+                      )
+                    : null,
               ),
             ),
             const SizedBox(width: 12),
@@ -90,8 +102,9 @@ class StructuredAddressFields extends StatelessWidget {
                 key: houseNumberKey,
                 controller: houseNumberController,
                 decoration: const InputDecoration(labelText: 'Nr.'),
-                validator: (v) =>
-                    Validators.required(v, message: 'Pflichtfeld'),
+                validator: addressRequired
+                    ? (v) => Validators.required(v, message: 'Pflichtfeld')
+                    : null,
               ),
             ),
           ],

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../models/company_profile.dart';
+import '../../services/contact_repository.dart';
 import '../../services/postal_code_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/swiss_phone_number.dart';
@@ -24,6 +25,7 @@ class CompanySetupScreen extends StatefulWidget {
     required this.registeredLastName,
     required this.registeredEmail,
     required this.postalCodeService,
+    required this.contactRepository,
   });
 
   /// Vorname/Nachname aus der Registrierung, vorbelegt als Ansprechperson.
@@ -35,6 +37,9 @@ class CompanySetupScreen extends StatefulWidget {
 
   /// Amtliche PLZ-/Ortssuche, einmal beim App-Start geladen.
   final PostalCodeService postalCodeService;
+
+  /// Dauerhafte Kontaktspeicherung, einmal beim App-Start geladen.
+  final ContactRepository contactRepository;
 
   @override
   State<CompanySetupScreen> createState() => _CompanySetupScreenState();
@@ -165,6 +170,7 @@ class _CompanySetupScreenState extends State<CompanySetupScreen> {
           isDemoMode: false,
           companyProfile: _profile,
           postalCodeService: widget.postalCodeService,
+          contactRepository: widget.contactRepository,
         ),
       ),
       (route) => false,

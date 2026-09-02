@@ -58,6 +58,7 @@ class TodayScreen extends StatefulWidget {
     required this.tasks,
     required this.contacts,
     required this.onCreateInvoice,
+    required this.onAddContact,
     required this.onOpenDocuments,
     required this.onLeaveDemo,
     required this.onAddAppointment,
@@ -74,9 +75,20 @@ class TodayScreen extends StatefulWidget {
   final bool companyIsVatLiable;
   final List<Appointment> appointments;
   final List<TaskItem> tasks;
+
+  /// Kontakte für die optionale Kontaktsuche im Termin-Dialog – im
+  /// Demo-Modus bereits die von `RootShell` verwalteten Demo-Kontakte,
+  /// sonst die echten. Dieselbe zentrale Quelle wie der „Kontakte“-Tab
+  /// (`RootShell._demoContacts`/`_contacts`); es gibt keine eigene, separate
+  /// Demo-Kontaktliste mehr auf „Heute“.
   final List<Contact> contacts;
 
   final VoidCallback onCreateInvoice;
+
+  /// Öffnet denselben Kontakteditor wie „Kontakt hinzufügen“ im
+  /// Kontakte-Tab (kein zweiter Editor) und übernimmt einen erfolgreich
+  /// gespeicherten Kontakt sofort in dieselbe Liste.
+  final VoidCallback onAddContact;
   final ValueChanged<DocumentsFilter> onOpenDocuments;
   final VoidCallback onLeaveDemo;
 
@@ -107,7 +119,6 @@ class _TodayScreenState extends State<TodayScreen>
   late final List<InvoiceDraft> _demoInvoices = _buildDemoInvoices();
   late List<Appointment> _demoAppointments = _buildDemoAppointments();
   late List<TaskItem> _demoTasks = _buildDemoTasks();
-  late final List<Contact> _demoContacts = _buildDemoContacts();
 
   @override
   void initState() {
@@ -230,22 +241,6 @@ class _TodayScreenState extends State<TodayScreen>
         start: DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 9),
         end: DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 10),
         category: AppointmentCategory.private,
-      ),
-    ];
-  }
-
-  List<Contact> _buildDemoContacts() {
-    return [
-      Contact(
-        displayName: 'Müller Bau GmbH',
-        phone: '+41 44 555 12 12',
-        email: 'info@mueller-bau.example',
-        address: 'Baustrasse 4, 8005 Zürich',
-      ),
-      Contact(displayName: 'Anna Schneider', phone: '+41 79 555 34 56'),
-      Contact(
-        displayName: 'Café Sonnenblick',
-        email: 'kontakt@sonnenblick.example',
       ),
     ];
   }
@@ -505,7 +500,7 @@ class _TodayScreenState extends State<TodayScreen>
         ? _demoAppointments
         : widget.appointments;
     final tasks = widget.isDemoMode ? _demoTasks : widget.tasks;
-    final contacts = widget.isDemoMode ? _demoContacts : widget.contacts;
+    final contacts = widget.contacts;
     final companyName = widget.isDemoMode
         ? 'Gartenbau Meier GmbH'
         : widget.companyProfile.companyName;
@@ -541,11 +536,12 @@ class _TodayScreenState extends State<TodayScreen>
         label: 'Vertrag erstellen',
         enabled: false,
       ),
-      const QuickAction(
-        actionKey: Key('quick_action_add_contact'),
+      QuickAction(
+        actionKey: const Key('quick_action_add_contact'),
         icon: Icons.person_add_alt_outlined,
         label: 'Kontakt hinzufügen',
-        enabled: false,
+        enabled: true,
+        onTap: widget.onAddContact,
       ),
     ];
 

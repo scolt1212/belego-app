@@ -16,6 +16,7 @@ class SwissAddressFields extends StatefulWidget {
     required this.cityController,
     required this.postalCodeService,
     required this.enabled,
+    this.addressRequired = true,
   });
 
   /// Form, zu der diese Felder gehören – wird nach einer Vorschlagsauswahl
@@ -25,6 +26,13 @@ class SwissAddressFields extends StatefulWidget {
   final TextEditingController cityController;
   final PostalCodeService postalCodeService;
   final bool enabled;
+
+  /// Ob PLZ und Ort ausgefüllt sein müssen. Standardmässig `true` (z.B.
+  /// Firmeneinrichtung, Rechnungsempfänger). Bei `false` bleiben leere Felder
+  /// gültig, eine vorhandene Eingabe wird aber weiterhin gegen das amtliche
+  /// Verzeichnis geprüft (z.B. für einen reinen Lieferanten-Kontakt ohne
+  /// zwingende Rechnungsadresse).
+  final bool addressRequired;
 
   @override
   State<SwissAddressFields> createState() => _SwissAddressFieldsState();
@@ -61,7 +69,9 @@ class _SwissAddressFieldsState extends State<SwissAddressFields> {
 
   String? _validatePostalCode(String? value) {
     final trimmed = (value ?? '').trim();
-    if (trimmed.isEmpty) return 'Pflichtfeld';
+    if (trimmed.isEmpty) {
+      return widget.addressRequired ? 'Pflichtfeld' : null;
+    }
     if (!widget.enabled) return null;
     if (!RegExp(r'^\d{4}$').hasMatch(trimmed)) {
       return 'Bitte eine gültige vierstellige Schweizer PLZ eingeben.';
@@ -71,7 +81,9 @@ class _SwissAddressFieldsState extends State<SwissAddressFields> {
 
   String? _validateCity(String? value) {
     final city = (value ?? '').trim();
-    if (city.isEmpty) return 'Bitte Ort eingeben';
+    if (city.isEmpty) {
+      return widget.addressRequired ? 'Bitte Ort eingeben' : null;
+    }
     if (!widget.enabled) return null;
     final postalCode = widget.postalCodeController.text.trim();
     // Kombination nur prüfen, wenn die PLZ für sich bereits gültig ist –

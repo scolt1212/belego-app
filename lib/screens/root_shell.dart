@@ -5,12 +5,16 @@ import '../models/company_profile.dart';
 import '../models/contact.dart';
 import '../models/invoice_draft.dart';
 import '../models/task_item.dart';
+import '../services/contact_repository.dart';
 import '../services/postal_code_service.dart';
 import '../theme/app_theme.dart';
+import 'contacts/contact_editor_screen.dart';
+import 'contacts/contacts_screen.dart';
 import 'documents/documents_screen.dart';
 import 'documents/invoice/invoice_editor_screen.dart';
 import 'placeholder_screen.dart';
 import 'today/today_screen.dart';
+import 'today/widgets/appointment_editor_dialog.dart';
 
 /// Hauptgerüst der App mit den 4 Tabs unten: Heute, Assistent, Dokumente, Kontakte.
 class RootShell extends StatefulWidget {
@@ -19,6 +23,7 @@ class RootShell extends StatefulWidget {
     this.isDemoMode = false,
     this.companyProfile,
     required this.postalCodeService,
+    required this.contactRepository,
   });
 
   /// Im Demo-Modus zeigt der „Heute“-Tab Beispieldaten statt des leeren
@@ -32,6 +37,9 @@ class RootShell extends StatefulWidget {
   /// Amtliche PLZ-/Ortssuche, einmal beim App-Start geladen.
   final PostalCodeService postalCodeService;
 
+  /// Dauerhafte lokale Speicherung der echten (Nicht-Demo-) Kontakte.
+  final ContactRepository contactRepository;
+
   @override
   State<RootShell> createState() => _RootShellState();
 }
@@ -44,10 +52,17 @@ class _RootShellState extends State<RootShell> {
   final List<Appointment> _appointments = [];
   final List<TaskItem> _tasks = [];
 
-  /// Noch keine echte Kontaktverwaltung (kein „Kontakt hinzufügen“ im UI) –
-  /// diese Liste bleibt für echte Konten deshalb bewusst leer, siehe
-  /// `Contact` und ROADMAP.md.
-  final List<Contact> _contacts = [];
+  /// Echte, dauerhaft gespeicherte Kontakte (siehe `ContactRepository`).
+  /// Einmalig beim Start dieses `RootShell` aus dem lokalen Speicher
+  /// geladen; jede Änderung wird sofort zurückgeschrieben.
+  late List<Contact> _contacts = widget.contactRepository.readAll();
+
+  /// Ausschliesslich für den Demo-Modus im Kontakte-Tab: unabhängige,
+  /// rein lokale Beispieldaten, die NIE dauerhaft gespeichert werden und nie
+  /// mit [_contacts] vermischt werden (siehe ROADMAP.md). Getrennt von den
+  /// Beispieldaten auf „Heute“ (dort privat in `TodayScreenState`).
+  late List<Contact> _demoContacts = _buildDemoContacts();
+
   DocumentsFilter _documentsFilter = DocumentsFilter.all;
 
   /// Laufende Nummer für neu vergebene Rechnungsnummern. Wird erst beim
@@ -101,6 +116,13 @@ class _RootShellState extends State<RootShell> {
     });
   }
 
+  /// Kontakte, die im Rechnungseditor als Kunde auswählbar sind: reine
+  /// Lieferanten erscheinen dort bewusst nicht (ausser sie sind gleichzeitig
+  /// als Kunde markiert), archivierte Kontakte ebenfalls nicht – siehe
+  /// Auftrag „Kontakte“.
+  List<Contact> get _selectableInvoiceCustomers =>
+      _contacts.where((c) => c.isCustomer && !c.isArchived).toList();
+
   void _createNewInvoice() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -109,6 +131,7 @@ class _RootShellState extends State<RootShell> {
           postalCodeService: widget.postalCodeService,
           allocateInvoiceNumber: _allocateInvoiceNumber,
           onSaveDraft: _saveDraft,
+          contacts: _selectableInvoiceCustomers,
         ),
       ),
     );
@@ -123,6 +146,27 @@ class _RootShellState extends State<RootShell> {
           allocateInvoiceNumber: _allocateInvoiceNumber,
           existingDraft: draft,
           onSaveDraft: _saveDraft,
+          contacts: _selectableInvoiceCustomers,
+        ),
+      ),
+    );
+  }
+
+  /// Öffnet einen neuen Rechnungsentwurf, vorausgefüllt mit [contact] (siehe
+  /// „Rechnung erstellen“ auf der Kontakt-Detailseite) – nutzt dieselbe
+  /// Übernahmelogik wie die Kontaktsuche im Rechnungseditor
+  /// (`InvoiceEditorScreen.initialContact`), verändert also weder
+  /// Positionen, MWST, Zahlungsfrist noch Rechnungsnummer.
+  void _createInvoiceForContact(Contact contact) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => InvoiceEditorScreen(
+          companyProfile: _companyProfile,
+          postalCodeService: widget.postalCodeService,
+          allocateInvoiceNumber: _allocateInvoiceNumber,
+          onSaveDraft: _saveDraft,
+          contacts: _selectableInvoiceCustomers,
+          initialContact: contact,
         ),
       ),
     );
@@ -177,6 +221,167 @@ class _RootShellState extends State<RootShell> {
     setState(() => _tasks.removeWhere((task) => task.id == id));
   }
 
+  // --- Kontakte -------------------------------------------------------
+
+  /// Öffnet denselben Kontakteditor wie „Kontakt hinzufügen“ im
+  /// Kontakte-Tab – aufgerufen von der Schnellaktion „Kontakt hinzufügen“
+  /// auf „Heute“. Kein zweiter Editor, keine eigene Speicherlogik: ein
+  /// erfolgreich gespeicherter Kontakt läuft über [_addContact] und ist
+  /// danach sofort im Kontakte-Tab sichtbar; bei Abbruch (`pop(null)`)
+  /// entsteht kein Kontakt.
+  Future<void> _openContactEditorFromToday() async {
+    final result = await Navigator.of(context).push<Contact>(
+      MaterialPageRoute(
+        builder: (_) =>
+            ContactEditorScreen(postalCodeService: widget.postalCodeService),
+      ),
+    );
+    if (result != null) _addContact(result);
+  }
+
+  /// Öffnet den bestehenden Termin-Dialog, vorverknüpft mit [contact] (siehe
+  /// „Termin erstellen“ auf der Kontakt-Detailseite). Der Termintitel bleibt
+  /// dabei leer/manuell – die Kontaktverknüpfung überschreibt ihn nicht
+  /// (siehe `AppointmentEditorDialog`).
+  Future<void> _createAppointmentForContact(Contact contact) async {
+    final result = await showAppointmentEditorDialog(
+      context,
+      initialDate: DateTime.now(),
+      contacts: widget.isDemoMode ? _demoContacts : _contacts,
+      initialContact: contact,
+    );
+    if (result == null) return;
+    // Im Demo-Modus bewusst nicht übernommen: Demo-Termine leben unabhängig
+    // und privat in `TodayScreenState._demoAppointments` (siehe dort) – das
+    // hier nachzubilden würde die „Heute“-Seite verändern, was dieser
+    // Auftrag ausdrücklich nicht vorsieht. Für echte Konten funktioniert die
+    // Verknüpfung vollständig.
+    if (!widget.isDemoMode) _addAppointment(result);
+  }
+
+  /// Rein lokale, klar als Beispiel erkennbare Kontakte für den Kontakte-Tab
+  /// im Demo-Modus – werden nie gespeichert und nie mit [_contacts]
+  /// vermischt (siehe Klassendokumentation).
+  List<Contact> _buildDemoContacts() => [
+    Contact(
+      isCompany: true,
+      companyName: 'Sonnenhof Gartenbau AG',
+      street: 'Gartenweg',
+      houseNumber: '12',
+      postalCode: '8400',
+      city: 'Winterthur',
+      email: 'info@sonnenhof-beispiel.example',
+      phone: '+41521234567',
+      isCustomer: true,
+    ),
+    Contact(
+      isCompany: false,
+      salutation: 'Frau',
+      firstName: 'Laura',
+      lastName: 'Fischer',
+      street: 'Seestrasse',
+      houseNumber: '3',
+      postalCode: '8800',
+      city: 'Thalwil',
+      phone: '+41791234567',
+      isCustomer: true,
+    ),
+    Contact(
+      isCompany: true,
+      companyName: 'Baumaterial Keller GmbH',
+      street: 'Industriestrasse',
+      houseNumber: '7',
+      postalCode: '8500',
+      city: 'Frauenfeld',
+      email: 'bestellungen@keller-beispiel.example',
+      isCustomer: false,
+      isSupplier: true,
+    ),
+    Contact(
+      isCompany: true,
+      companyName: 'Muster Treuhand & Beratung AG',
+      street: 'Bahnhofplatz',
+      houseNumber: '2',
+      postalCode: '9000',
+      city: 'St. Gallen',
+      email: 'kontakt@muster-treuhand.example',
+      isCustomer: true,
+      isSupplier: true,
+    ),
+  ];
+
+  /// Ob [contact] bereits von mindestens einer Rechnung oder einem Termin
+  /// verwendet wird – entscheidet, ob Löschen stattdessen archiviert (siehe
+  /// `ContactDetailScreen`). Rechnungen verweisen dabei nur über die zum
+  /// Auswahlzeitpunkt kopierte `InvoiceCustomer.contactId`, nie über den
+  /// (danach unabhängigen) Namen. `_draftInvoices`/`_appointments` enthalten
+  /// – unabhängig vom Demo-Modus – ausschliesslich Verweise auf echte
+  /// Kontakte (siehe `_selectableInvoiceCustomers` und den Termin-Dialog auf
+  /// „Heute“); ein Demo-Kontakt kann hier also nie als „verwendet“ gelten.
+  bool _isContactInUse(Contact contact) {
+    final usedByInvoice = _draftInvoices.any(
+      (d) => d.customer.contactId == contact.id,
+    );
+    final usedByAppointment = _appointments.any(
+      (a) => a.contactId == contact.id,
+    );
+    return usedByInvoice || usedByAppointment;
+  }
+
+  void _addContact(Contact contact) {
+    setState(() {
+      if (widget.isDemoMode) {
+        _demoContacts = [..._demoContacts, contact];
+      } else {
+        _contacts = [..._contacts, contact];
+        widget.contactRepository.saveAll(_contacts);
+      }
+    });
+  }
+
+  void _updateContact(Contact updated) {
+    setState(() {
+      if (widget.isDemoMode) {
+        _demoContacts = [
+          for (final c in _demoContacts)
+            if (c.id == updated.id) updated else c,
+        ];
+      } else {
+        _contacts = [
+          for (final c in _contacts)
+            if (c.id == updated.id) updated else c,
+        ];
+        widget.contactRepository.saveAll(_contacts);
+      }
+    });
+  }
+
+  /// Löscht [contact] endgültig, falls er nirgends verwendet wird – sonst
+  /// wird er stattdessen archiviert, damit bestehende Rechnungen/Termine
+  /// nicht beschädigt werden (siehe `_isContactInUse`).
+  void _deleteOrArchiveContact(Contact contact) {
+    setState(() {
+      final inUse = _isContactInUse(contact);
+      if (inUse) contact.isArchived = true;
+      if (widget.isDemoMode) {
+        _demoContacts = inUse
+            ? [
+                for (final c in _demoContacts)
+                  if (c.id == contact.id) contact else c,
+              ]
+            : _demoContacts.where((c) => c.id != contact.id).toList();
+      } else {
+        _contacts = inUse
+            ? [
+                for (final c in _contacts)
+                  if (c.id == contact.id) contact else c,
+              ]
+            : _contacts.where((c) => c.id != contact.id).toList();
+        widget.contactRepository.saveAll(_contacts);
+      }
+    });
+  }
+
   List<Widget> _buildScreens() => [
     TodayScreen(
       isDemoMode: widget.isDemoMode,
@@ -185,8 +390,13 @@ class _RootShellState extends State<RootShell> {
       companyIsVatLiable: _companyProfile.isVatLiable,
       appointments: _appointments,
       tasks: _tasks,
-      contacts: _contacts,
+      // Dieselbe zentrale Kontaktquelle wie der „Kontakte“-Tab (siehe dort)
+      // – „Heute“ pflegt keine eigene, separate Demo-Kontaktliste mehr, damit
+      // ein neu erstellter Kontakt (Demo oder echt) sofort auch in der
+      // Kontaktsuche des Termin-Dialogs auffindbar ist.
+      contacts: widget.isDemoMode ? _demoContacts : _contacts,
       onCreateInvoice: _createNewInvoice,
+      onAddContact: _openContactEditorFromToday,
       onOpenDocuments: _openDocumentsWithFilter,
       onLeaveDemo: () => Navigator.of(context).pop(),
       onAddAppointment: _addAppointment,
@@ -205,7 +415,16 @@ class _RootShellState extends State<RootShell> {
       onChangeStatus: _updateInvoiceStatus,
       initialFilter: _documentsFilter,
     ),
-    const PlaceholderScreen(title: 'Kontakte', icon: Icons.people_outline),
+    ContactsScreen(
+      contacts: widget.isDemoMode ? _demoContacts : _contacts,
+      postalCodeService: widget.postalCodeService,
+      isContactInUse: _isContactInUse,
+      onAdd: _addContact,
+      onUpdate: _updateContact,
+      onDelete: _deleteOrArchiveContact,
+      onCreateInvoice: _createInvoiceForContact,
+      onCreateAppointment: _createAppointmentForContact,
+    ),
   ];
 
   @override

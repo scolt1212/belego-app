@@ -9,12 +9,16 @@ import '../../../utils/validators.dart';
 /// Öffnet den Termin-Dialog zum Hinzufügen (ohne [existing]) oder Bearbeiten
 /// (mit [existing]) und liefert den gespeicherten Termin zurück, oder `null`
 /// bei Abbruch. [contacts] sind die aktuell bekannten Kontakte für die
-/// optionale Kontaktsuche.
+/// optionale Kontaktsuche. [initialContact] verknüpft einen NEUEN Termin
+/// direkt mit diesem Kontakt (z.B. „Termin erstellen“ auf der
+/// Kontakt-Detailseite), ohne den Titel vorzubelegen; wird bei [existing]
+/// ignoriert.
 Future<Appointment?> showAppointmentEditorDialog(
   BuildContext context, {
   required DateTime initialDate,
   Appointment? existing,
   List<Contact> contacts = const [],
+  Contact? initialContact,
 }) {
   return showDialog<Appointment>(
     context: context,
@@ -22,6 +26,7 @@ Future<Appointment?> showAppointmentEditorDialog(
       initialDate: initialDate,
       existing: existing,
       contacts: contacts,
+      initialContact: initialContact,
     ),
   );
 }
@@ -36,11 +41,16 @@ class AppointmentEditorDialog extends StatefulWidget {
     required this.initialDate,
     this.existing,
     this.contacts = const [],
+    this.initialContact,
   });
 
   final DateTime initialDate;
   final Appointment? existing;
   final List<Contact> contacts;
+
+  /// Verknüpft einen NEUEN Termin direkt mit diesem Kontakt. Wird bei
+  /// [existing] ignoriert und überschreibt nie den Titel.
+  final Contact? initialContact;
 
   @override
   State<AppointmentEditorDialog> createState() =>
@@ -76,8 +86,10 @@ class _AppointmentEditorDialogState extends State<AppointmentEditorDialog> {
         ? TimeOfDay.fromDateTime(existing.end)
         : const TimeOfDay(hour: 10, minute: 0);
     _category = existing?.category ?? AppointmentCategory.business;
-    _selectedContactId = existing?.contactId;
-    final linkedContact = _findContact(_selectedContactId);
+    _selectedContactId = existing?.contactId ?? widget.initialContact?.id;
+    final linkedContact =
+        _findContact(_selectedContactId) ??
+        (existing == null ? widget.initialContact : null);
     _contactSearchController = TextEditingController(
       text: linkedContact?.displayName ?? '',
     );

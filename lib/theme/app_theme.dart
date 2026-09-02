@@ -30,8 +30,11 @@ class AppColors {
   static const Color border = Color(0xFFDCE6F2);
 
   /// Umrandung für interaktive Eingabefelder. Immer sichtbar, auch ohne
-  /// Fokus.
-  static const Color fieldBorder = Color(0xFFDCE6F2);
+  /// Fokus – bewusst deutlicher (dunkler/gesättigter) als der dezente
+  /// Kartenrahmen [border], damit ein Feld schon ohne Fokus eindeutig als
+  /// Bedienelement erkennbar ist und nicht mit einer reinen Flächenkante
+  /// verwechselt wird.
+  static const Color fieldBorder = Color(0xFF9FBBDA);
 
   /// Leicht hellblauer Hintergrund für editierbare Felder, damit sie bereits
   /// ohne Fokus klar als Eingabefeld erkennbar sind.

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/contact_repository.dart';
 import '../../services/postal_code_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/max_width_box.dart';
@@ -9,14 +10,22 @@ import '../root_shell.dart';
 
 /// Erster Bildschirm, den ein Benutzer beim Start von Belego sieht.
 class StartScreen extends StatelessWidget {
-  const StartScreen({super.key, required this.postalCodeService});
+  const StartScreen({
+    super.key,
+    required this.postalCodeService,
+    required this.contactRepository,
+  });
 
   final PostalCodeService postalCodeService;
+  final ContactRepository contactRepository;
 
   void _openRegister(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => RegisterScreen(postalCodeService: postalCodeService),
+        builder: (_) => RegisterScreen(
+          postalCodeService: postalCodeService,
+          contactRepository: contactRepository,
+        ),
       ),
     );
   }
@@ -24,7 +33,10 @@ class StartScreen extends StatelessWidget {
   void _openLogin(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => LoginScreen(postalCodeService: postalCodeService),
+        builder: (_) => LoginScreen(
+          postalCodeService: postalCodeService,
+          contactRepository: contactRepository,
+        ),
       ),
     );
   }
@@ -32,8 +44,11 @@ class StartScreen extends StatelessWidget {
   void _openDemo(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            RootShell(isDemoMode: true, postalCodeService: postalCodeService),
+        builder: (_) => RootShell(
+          isDemoMode: true,
+          postalCodeService: postalCodeService,
+          contactRepository: contactRepository,
+        ),
       ),
     );
   }
